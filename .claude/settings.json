@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(PYTHONUTF8=1 python test/e2e_test.py)",
+      "Bash(PYTHONUTF8=1 python test/screenshot.py test/shots)",
+      "Bash(PYTHONUTF8=1 python test/soak_test.py)",
+      "Bash(PYTHONUTF8=1 python -c ' *)",
+      "Bash(timeout 570 bash -c 'until [ \"$\\(curl -s -o /dev/null -w \"%{http_code}\" --max-time 8 https://game-tank.tingyudeco.com/ 2>/dev/null\\)\" = \"200\" ]; do sleep 20; done')"
+    ]
+  }
+}

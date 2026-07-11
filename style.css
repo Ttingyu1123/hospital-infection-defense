@@ -1,0 +1,78 @@
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  background: #0b0e14;
+  color: #cfd8e3;
+  font-family: Consolas, Menlo, "Courier New", monospace;
+  overflow: hidden;
+}
+
+#frame {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+header {
+  padding: 8px 0 4px;
+  text-align: center;
+  flex: 0 0 auto;
+}
+
+header h1 {
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: 10px;
+  padding-left: 10px; /* 抵銷最後一字的字距，維持視覺置中 */
+  color: #f0c040;
+  text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.85), 0 0 14px rgba(240, 192, 64, 0.4);
+}
+
+.subtitle {
+  font-family: "Microsoft JhengHei", "PingFang TC", "Noto Sans TC", sans-serif;
+  font-size: 13px;
+  color: #6b7686;
+  letter-spacing: 3px;
+  margin-top: 3px;
+}
+
+#canvas-wrap {
+  flex: 1 1 auto;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  padding: 6px;
+}
+
+canvas#game {
+  background: #10141c;
+  border: 2px solid #2a3342;
+  box-shadow: 0 0 30px rgba(0, 0, 0, 0.6);
+  image-rendering: pixelated;
+  /* JS 設定實際顯示尺寸，維持 4:3；邏輯解析度固定 960x720 */
+  max-width: 100%;
+  max-height: 100%;
+}
+
+footer {
+  flex: 0 0 auto;
+  padding: 6px 0 10px;
+}
+
+.controls {
+  display: flex;
+  gap: 20px;
+  font-family: "Microsoft JhengHei", "PingFang TC", "Noto Sans TC", sans-serif;
+  font-size: 13px;
+  letter-spacing: 1px;
+  color: #6b7686;
+}
+
+.controls b {
+  color: #9fb0c6;
+  font-family: Consolas, Menlo, "Courier New", monospace;
+}

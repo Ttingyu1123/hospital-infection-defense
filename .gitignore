@@ -1,0 +1,3 @@
+__pycache__/
+test/shots/*.png
+!test/shots/03_gameplay.png
