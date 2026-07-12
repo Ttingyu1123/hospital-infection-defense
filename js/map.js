@@ -83,9 +83,10 @@ class GameMap {
   static entitySolid(type)     { return type === T.WALL || type === T.PARTITION || type === T.BED || type === T.EQUIP; }
   static projectileSolid(type) { return type === T.WALL || type === T.PARTITION || type === T.EQUIP; }
 
-  /* 矩形是否撞到角色不可通過的地形或地圖邊界 */
+  /* 矩形是否撞到角色不可通過的地形或地圖邊界。
+     上緣以 HUD_H 為天花板，角色不進入狀態列後方（避免被 HUD 遮住）。 */
   rectBlocksEntity(x, y, w, h) {
-    if (x < 0 || y < 0 || x + w > CONST.CANVAS_W || y + h > CONST.CANVAS_H) return true;
+    if (x < 0 || y < CONST.HUD_H || x + w > CONST.CANVAS_W || y + h > CONST.CANVAS_H) return true;
     const t = CONST.TILE;
     const c0 = Math.floor(x / t), c1 = Math.floor((x + w - 0.01) / t);
     const r0 = Math.floor(y / t), r1 = Math.floor((y + h - 0.01) / t);

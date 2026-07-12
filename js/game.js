@@ -195,11 +195,11 @@ class Game {
       case STATE.BOSS_INTRO:
         if (code === 'KeyP') { this.pausedFrom = this.state; this.state = STATE.PAUSED; break; }
         if (code === 'Enter' || code === 'Space') { if (this.tip) this.tip = null; }
-        if (code === 'Digit1') this.player.setTool('alcohol');
-        if (code === 'Digit2') this.player.setTool('antibiotic');
-        if (code === 'Digit3') this.player.setTool('uv');
-        if (code === 'KeyQ') this.player.cycleTool(-1);
-        if (code === 'KeyE') this.player.cycleTool(1);
+        if (code === 'Digit1') this._switchTool('alcohol');
+        if (code === 'Digit2') this._switchTool('antibiotic');
+        if (code === 'Digit3') this._switchTool('uv');
+        if (code === 'KeyQ') { this.player.cycleTool(-1); this._toolFeedback(); }
+        if (code === 'KeyE') { this.player.cycleTool(1); this._toolFeedback(); }
         if (code === 'KeyC') this.recloseDoors();
         break;
       case STATE.PAUSED:
@@ -525,23 +525,38 @@ class Game {
     }
   }
 
+  /* 切換工具並在角色上方顯示明確提示（讓玩家知道換了什麼、記得按 Space 使用） */
+  _switchTool(id) {
+    const changed = this.player.toolId !== id;
+    this.player.setTool(id);
+    if (changed) this._toolFeedback();
+  }
+
+  _toolFeedback() {
+    const tool = CONST.TOOLS[this.player.toolId];
+    this.spawnFloatText(this.player.x, this.player.y - this.player.half - 12, `▶ ${tool.name}（按 Space 使用）`, tool.color);
+  }
+
   recloseDoors() {
-    let closedAny = false;
+    let closed = 0, cooling = 0, blocked = 0, intact = 0;
     for (const d of this.isolationDoors) {
-      if (!d.closed && d.recloseCd <= 0) {
-        // 門口沒有病原體才可關
-        let blocked = false;
-        for (const e of this.livingEnemies()) {
-          if (aabbOverlap(e.rect.x, e.rect.y, e.rect.w, e.rect.h, d.x - 4, d.y - 4, d.w + 8, d.h + 8)) { blocked = true; break; }
-        }
-        if (blocked) continue;
-        d.closed = true;
-        d.hp = d.maxHp;
-        d.recloseCd = CONST.DOOR_RECLOSE_CD;
-        closedAny = true;
+      if (d.closed) { intact++; continue; }
+      if (d.recloseCd > 0) { cooling++; continue; }
+      // 門口有病原體時無法關閉
+      let hasEnemy = false;
+      for (const e of this.livingEnemies()) {
+        if (aabbOverlap(e.rect.x, e.rect.y, e.rect.w, e.rect.h, d.x - 4, d.y - 4, d.w + 8, d.h + 8)) { hasEnemy = true; break; }
       }
+      if (hasEnemy) { blocked++; continue; }
+      d.closed = true; d.hp = d.maxHp; d.recloseCd = CONST.DOOR_RECLOSE_CD;
+      closed++;
     }
-    if (closedAny) { audioSys.doorClose(); this.spawnFloatText(this.patientCenter.x, this.patientRect.y - 16, '隔離門已關閉', '#a7e0d6'); }
+    // 依結果給明確回饋（讓玩家知道按鍵有作用）
+    const fy = this.patientRect.y - 16, fx = this.patientCenter.x;
+    if (closed > 0) { audioSys.doorClose(); this.spawnFloatText(fx, fy, '隔離門已重新關閉', '#a7e0d6'); }
+    else if (blocked > 0) { this.spawnFloatText(fx, fy, '門口有病原體，無法關閉', '#ff9d8a'); }
+    else if (cooling > 0) { this.spawnFloatText(fx, fy, `隔離門整備中（${Math.ceil(this.isolationDoors[0].recloseCd)}s）`, '#f2c14e'); }
+    else if (intact > 0) { this.spawnFloatText(fx, fy, '隔離門完好，無需關閉', '#a7e0d6'); }
   }
 
   /* ---------- 道具 ---------- */

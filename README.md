@@ -135,7 +135,8 @@ Canvas 幾何圖形即時繪製，音效以 Web Audio API 即時合成。
 ## 專案結構
 
 ```
-index.html          頁面骨架與 script 載入順序
+index.html          頁面骨架與 script 載入順序（頁尾連向說明書）
+manual.html         完整遊戲說明書（可離線開啟、含新手攻略與 FAQ）
 style.css           外框樣式；Canvas 以 CSS 等比縮放（4:3，邏輯 960x720）
 js/
   constants.js      全部常數：工具、敵人數值、抗性矩陣、波次、狀態列舉

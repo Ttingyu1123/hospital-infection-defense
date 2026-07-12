@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>醫院防疫大作戰 — 遊戲說明書</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --bg: #0a121c; --panel: #10202e; --panel2: #14283a; --line: #234050;
+    --teal: #7fe0d0; --ink: #dbe6ee; --dim: #93a8b8; --gold: #ffe08a;
+    --alcohol: #7fd8e8; --anti: #f2c14e; --uv: #b98cf0; --danger: #ff8a8a; --good: #8ee08a;
+  }
+  html, body { background: var(--bg); color: var(--ink);
+    font-family: "Microsoft JhengHei","PingFang TC","Noto Sans TC",system-ui,sans-serif;
+    line-height: 1.75; font-size: 16px; }
+  .wrap { max-width: 900px; margin: 0 auto; padding: 32px 20px 80px; }
+  header.top { text-align: center; padding: 20px 0 8px; }
+  header.top h1 { color: var(--teal); font-size: 34px; letter-spacing: 4px;
+    text-shadow: 0 0 16px rgba(127,224,208,.35); }
+  header.top .sub { color: var(--dim); font-size: 14px; letter-spacing: 2px; margin-top: 4px; }
+  header.top .play { display: inline-block; margin-top: 16px; padding: 10px 26px; border-radius: 8px;
+    background: var(--teal); color: #06222a; font-weight: 700; text-decoration: none; letter-spacing: 1px; }
+  header.top .play:hover { filter: brightness(1.08); }
+  .toc { background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+    padding: 16px 20px; margin: 24px 0; }
+  .toc h2 { font-size: 15px; color: var(--dim); letter-spacing: 2px; margin-bottom: 8px; }
+  .toc ol { columns: 2; column-gap: 28px; list-style: none; counter-reset: t; }
+  .toc li { counter-increment: t; padding: 3px 0; }
+  .toc li::before { content: counter(t) "."; color: var(--teal); font-weight: 700; margin-right: 8px; }
+  .toc a { color: var(--ink); text-decoration: none; }
+  .toc a:hover { color: var(--teal); }
+  section { margin: 34px 0; }
+  h2.sec { font-size: 23px; color: var(--teal); border-left: 4px solid var(--teal);
+    padding-left: 12px; margin-bottom: 14px; letter-spacing: 1px; }
+  h3 { font-size: 17px; color: var(--gold); margin: 18px 0 6px; }
+  p { margin: 8px 0; }
+  ul, ol.steps { margin: 8px 0 8px 4px; padding-left: 22px; }
+  li { margin: 5px 0; }
+  strong { color: #fff; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+    padding: 16px 20px; margin: 14px 0; }
+  .steps.big { list-style: none; padding: 0; counter-reset: s; }
+  .steps.big > li { counter-increment: s; position: relative; padding: 12px 12px 12px 56px;
+    background: var(--panel2); border-radius: 10px; margin: 10px 0; }
+  .steps.big > li::before { content: counter(s); position: absolute; left: 14px; top: 12px;
+    width: 30px; height: 30px; border-radius: 50%; background: var(--teal); color: #06222a;
+    font-weight: 800; display: grid; place-items: center; }
+  table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 15px;
+    display: block; overflow-x: auto; }
+  th, td { border: 1px solid var(--line); padding: 8px 10px; text-align: left; vertical-align: top; }
+  th { background: var(--panel2); color: var(--teal); white-space: nowrap; }
+  kbd { display: inline-block; background: #0d1a26; border: 1px solid var(--line);
+    border-bottom-width: 2px; border-radius: 5px; padding: 1px 8px; font-family: Consolas, monospace;
+    color: #eaf7f4; font-size: 14px; min-width: 22px; text-align: center; }
+  .pill { display: inline-block; padding: 1px 10px; border-radius: 20px; font-size: 13px;
+    font-weight: 700; }
+  .p-alc { background: rgba(127,216,232,.18); color: var(--alcohol); }
+  .p-anti { background: rgba(242,193,78,.18); color: var(--anti); }
+  .p-uv { background: rgba(185,140,240,.18); color: var(--uv); }
+  .good { color: var(--good); } .bad { color: var(--danger); } .dim { color: var(--dim); }
+  .callout { border-left: 4px solid var(--gold); background: rgba(255,224,138,.08);
+    padding: 10px 16px; border-radius: 0 8px 8px 0; margin: 12px 0; }
+  .callout.q { border-color: var(--alcohol); background: rgba(127,216,232,.08); }
+  .disc { text-align: center; color: var(--dim); font-size: 14px; border-top: 1px solid var(--line);
+    margin-top: 40px; padding-top: 20px; }
+  a.back { color: var(--teal); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <h1>醫院防疫大作戰</h1>
+    <div class="sub">Hospital Infection Defense ・ 完整遊戲說明書</div>
+    <a class="play" href="index.html">▶ 開始遊戲</a>
+  </header>
+
+  <nav class="toc">
+    <h2>目錄</h2>
+    <ol>
+      <li><a href="#goal">遊戲目標</a></li>
+      <li><a href="#quick">30 秒快速上手</a></li>
+      <li><a href="#keys">操作總表</a></li>
+      <li><a href="#tools">三種工具與剋制表</a></li>
+      <li><a href="#enemies">病原體圖鑑</a></li>
+      <li><a href="#facility">場上設施與道具</a></li>
+      <li><a href="#waves">波次與 Boss</a></li>
+      <li><a href="#mode">難度與模式</a></li>
+      <li><a href="#tips">新手攻略 10 招</a></li>
+      <li><a href="#faq">常見問題（含你剛遇到的）</a></li>
+      <li><a href="#score">計分方式</a></li>
+      <li><a href="#edu">衛教重點</a></li>
+    </ol>
+  </nav>
+
+  <section id="goal">
+    <h2 class="sec">1 ・ 遊戲目標</h2>
+    <p>你是一名 <strong>感染管制醫師</strong>。病原體正從畫面上方湧入醫院，目標是攻向畫面
+    <strong>最底部中央的 ICU 重症病人</strong>。</p>
+    <ul>
+      <li>用三種感染控制工具消滅病原體，別讓牠們碰到病人。</li>
+      <li><strong>病人生命歸零 → 失敗</strong>；<strong>你的生命（LIVES）歸零 → 失敗</strong>。</li>
+      <li>撐過五波進攻並擊敗最終 Boss「超級抗藥菌王」→ <span class="good">勝利</span>。</li>
+    </ul>
+    <div class="callout">畫面最上方是狀態列（HUD），顯示分數、你的生命、波次、剩餘病原體、病人生命、目前工具與能量。角色與敵人都在狀態列下方活動，不會被它擋住。</div>
+  </section>
+
+  <section id="quick">
+    <h2 class="sec">2 ・ 30 秒快速上手</h2>
+    <ol class="steps big">
+      <li>開始畫面按 <kbd>Enter</kbd> 進入遊戲（可先用 <kbd>←</kbd><kbd>→</kbd> 選難度，新手建議「簡單」）。</li>
+      <li>用 <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> 或方向鍵移動；角色會朝移動方向。</li>
+      <li><strong>按住 <kbd>Space</kbd> 攻擊</strong>。工具朝你「面對的方向」發射，所以先轉向敵人再噴。</li>
+      <li>換工具：按 <kbd>1</kbd>=酒精、<kbd>2</kbd>=抗生素、<kbd>3</kbd>=紫外線。<span class="dim">換了之後角色頭上會出現提示，記得還是要按 Space 才會攻擊。</span></li>
+      <li>站在敵人和 ICU 病人「之間」擋住牠們，優先清掉快接近病人的敵人。</li>
+    </ol>
+  </section>
+
+  <section id="keys">
+    <h2 class="sec">3 ・ 操作總表</h2>
+    <table>
+      <tr><th>按鍵</th><th>功能</th></tr>
+      <tr><td><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / 方向鍵</td><td>上下左右移動（同時決定攻擊方向）</td></tr>
+      <tr><td><kbd>Space</kbd></td><td><strong>使用目前工具攻擊</strong>（可按住連續）</td></tr>
+      <tr><td><kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd></td><td>直接選 酒精 / 抗生素 / 紫外線</td></tr>
+      <tr><td><kbd>Q</kbd> <kbd>E</kbd></td><td>切換上一個 / 下一個工具</td></tr>
+      <tr><td><kbd>C</kbd></td><td>重新關閉「被咬破的」隔離門（門完好時按了會提示「無需關閉」）</td></tr>
+      <tr><td><kbd>P</kbd></td><td>暫停 / 繼續</td></tr>
+      <tr><td><kbd>M</kbd> / <kbd>B</kbd></td><td>開關 音效 / 背景音樂</td></tr>
+      <tr><td><kbd>Enter</kbd> / <kbd>Space</kbd></td><td>開始遊戲、關閉衛教提示卡</td></tr>
+      <tr><td><kbd>←</kbd><kbd>→</kbd> / <kbd>↑</kbd><kbd>↓</kbd></td><td>開始畫面：選難度 / 切換劇情‧無盡模式</td></tr>
+      <tr><td><kbd>R</kbd></td><td>遊戲結束後重新開始</td></tr>
+    </table>
+    <p class="dim">手機／平板：畫面左下有虛擬搖桿、右下有動作鈕（酒／抗／紫、噴射、關門、暫停），點畫面即可開始或重玩。</p>
+  </section>
+
+  <section id="tools">
+    <h2 class="sec">4 ・ 三種工具與剋制表</h2>
+    <p>每種工具有獨立的 <strong>能量</strong>（發射會消耗、隨時間回充）與 <strong>冷卻</strong>。能量條在狀態列第二排。<strong>關鍵：不同敵人怕不同工具，用錯了幾乎打不動。</strong></p>
+
+    <div class="card">
+      <h3><span class="pill p-alc">① 酒精噴霧</span></h3>
+      <ul>
+        <li>近距離 <strong>扇形噴霧</strong>，同時清除前方地面污染。</li>
+        <li>射程短、冷卻快、能量便宜 → 適合貼身清一般細菌與污染。</li>
+        <li>對病毒普通、<span class="bad">對芽孢幾乎無效</span>。</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3><span class="pill p-anti">② 抗生素發射器</span></h3>
+      <ul>
+        <li>發射 <strong>直線膠囊</strong>，射程長，可從遠處點掉一般細菌，也能打破污染隔板。</li>
+        <li><span class="bad">對病毒完全無效</span>（會顯示「無效」），對抗藥性細菌傷害也低。</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3><span class="pill p-uv">③ 紫外線消毒器</span></h3>
+      <ul>
+        <li>發射 <strong>直線光束，可貫穿一次打到多個敵人</strong>，並清除沿線污染。</li>
+        <li>剋 <span class="good">病毒、芽孢、污染，並能快速破 Boss 護盾</span>。</li>
+        <li>冷卻長、能量消耗大 → 留給成群病毒、芽孢與 Boss。</li>
+      </ul>
+    </div>
+
+    <h3>剋制對照表（★ 越多越有效）</h3>
+    <table>
+      <tr><th>敵人 ＼ 工具</th><th>酒精</th><th>抗生素</th><th>紫外線</th></tr>
+      <tr><td>一般細菌</td><td>★★★</td><td>★★★</td><td>★★</td></tr>
+      <tr><td>快速病毒</td><td>★★</td><td class="bad">✗ 無效</td><td>★★★</td></tr>
+      <tr><td>芽孢細菌</td><td class="bad">✗ 極差</td><td>★★</td><td>★★★</td></tr>
+      <tr><td>抗藥性細菌</td><td>★★</td><td>★</td><td>★★★</td></tr>
+      <tr><td>Boss（含護盾）</td><td>★</td><td>★</td><td>★★★</td></tr>
+    </table>
+    <div class="callout">一句話記法：<strong>細菌用抗生素／酒精，病毒和芽孢用紫外線，Boss 護盾也用紫外線破。</strong></div>
+  </section>
+
+  <section id="enemies">
+    <h2 class="sec">5 ・ 病原體圖鑑</h2>
+    <table>
+      <tr><th>類型</th><th>外觀</th><th>特性</th><th>對策</th></tr>
+      <tr><td>一般細菌</td><td>綠色圓球</td><td>速度中等、生命低，直朝病人</td><td>抗生素遠射或酒精貼身</td></tr>
+      <tr><td>快速病毒</td><td>紫色帶刺</td><td>快、移動不規則、常成群</td><td><strong>紫外線</strong>貫穿掃一排；別用抗生素</td></tr>
+      <tr><td>芽孢細菌</td><td>黃褐厚殼</td><td>慢、血厚，會留下污染</td><td><strong>紫外線</strong>集中打；別用酒精</td></tr>
+      <tr><td>抗藥性細菌</td><td>深紅帶盾</td><td>血厚、優先攻擊病人、快速咬破隔板／門</td><td>紫外線為主，多工具輪流</td></tr>
+    </table>
+    <p>所有病原體都會 <strong>接觸腐蝕 ICU 前方的污染隔板與隔離門</strong> 來開路，突破後就會持續傷害病人。踩在綠色污染上牠們還會加速、回血。</p>
+  </section>
+
+  <section id="facility">
+    <h2 class="sec">6 ・ 場上設施與道具</h2>
+    <h3>固定設施（走過去互動）</h3>
+    <ul>
+      <li><strong>洗手台</strong>（藍色水槽，畫面兩側）：靠近即「完成手部衛生」，短時間內提升酒精效果、降低污染影響。</li>
+      <li><strong>疫苗接種站</strong>（綠色針筒，ICU 兩側）：靠近即為病人啟動「疫苗防護」，一段時間內 <strong>大幅降低病人受到的傷害</strong>——病人快被圍攻時很關鍵。</li>
+      <li><strong>隔離門</strong>（ICU 正上方黃黑斑馬紋）：一開始關著，會被抗藥性細菌／Boss 逐漸咬破；破了之後按 <kbd>C</kbd> 可重新關閉（有冷卻）。</li>
+    </ul>
+    <h3>掉落道具（走過去拾取）</h3>
+    <ul>
+      <li><strong>PPE 防護</strong>（口罩）：獲得可抵擋一次傷害的護盾。</li>
+      <li><strong>消毒補給</strong>（綠十字）：補滿三種工具能量並短暫縮短冷卻。</li>
+      <li><strong>急救包</strong>（紅十字）：回復病人生命。</li>
+      <li><strong>隔離警示卡</strong>（黃三角）：短時間內讓全場病原體減速。</li>
+    </ul>
+  </section>
+
+  <section id="waves">
+    <h2 class="sec">7 ・ 波次與 Boss</h2>
+    <p>劇情模式共 <strong>五波</strong>，每波開始有提示、清光才進下一波，完成會加分並回復病人少量生命：</p>
+    <ol>
+      <li><strong>基礎清潔</strong>：少量一般細菌，熟悉移動與酒精。</li>
+      <li><strong>病毒入侵</strong>：加入病毒，學會切工具（抗生素對病毒無效）。</li>
+      <li><strong>環境污染</strong>：加入芽孢，地面開始有污染，善用洗手台。</li>
+      <li><strong>抗藥性危機</strong>：抗藥性細菌會破壞隔離門，記得用 <kbd>C</kbd> 補關。</li>
+      <li><strong>超級抗藥菌王</strong>：最終 Boss。</li>
+    </ol>
+    <h3>Boss：超級抗藥菌王（三階段）</h3>
+    <ul>
+      <li><strong>第一階段</strong>：緩慢逼近 ICU、召喚一般細菌、發射污染液滴。</li>
+      <li><strong>第二階段（血量 &lt;60%）</strong>：加速、召喚病毒與芽孢、留下污染（「抗藥性升高」）。</li>
+      <li><strong>第三階段（血量 &lt;30%）</strong>：狂暴，週期性生成 <strong>護盾</strong>——<span class="good">用紫外線可快速破盾</span>，破盾後才打得動本體。</li>
+    </ul>
+    <div class="callout">打 Boss 主力是 <strong>紫外線</strong>：破護盾快、傷害高。酒精拿來清牠身邊的污染，抗生素效益很低。</div>
+  </section>
+
+  <section id="mode">
+    <h2 class="sec">8 ・ 難度與模式</h2>
+    <p>開始畫面用方向鍵選擇：</p>
+    <ul>
+      <li><strong>難度</strong>（<kbd>←</kbd><kbd>→</kbd>）：簡單 / 普通 / 困難——影響敵人血量速度、病人受傷程度、你受傷後的無敵時間。<span class="dim">新手先玩「簡單」。</span></li>
+      <li><strong>模式</strong>（<kbd>↑</kbd><kbd>↓</kbd>）：
+        <ul>
+          <li><strong>劇情五波</strong>：固定關卡 + Boss，擊敗後勝利。</li>
+          <li><strong>無盡模式</strong>：波次持續變強、每五波一隻菌王，比誰活得久、分數高。</li>
+        </ul>
+      </li>
+    </ul>
+  </section>
+
+  <section id="tips">
+    <h2 class="sec">9 ・ 新手攻略 10 招</h2>
+    <ol>
+      <li><strong>先站位再攻擊</strong>：待在敵人與 ICU 病人之間，當「最後一道防線」。</li>
+      <li><strong>攻擊要先轉向</strong>：工具朝你面對的方向發射，先用移動鍵轉向敵人。</li>
+      <li><strong>用對工具</strong>：看到紫色病毒／黃褐芽孢就切 <kbd>3</kbd> 紫外線；綠色細菌用 <kbd>1</kbd>/<kbd>2</kbd>。</li>
+      <li><strong>紫外線打成排</strong>：病毒常成群，讓牠們排成一直線再用紫外線貫穿。</li>
+      <li><strong>顧能量</strong>：紫外線很耗能，別亂放；沒能量時撿「消毒補給」或改用便宜的酒精。</li>
+      <li><strong>清污染</strong>：綠色地板會替敵人加速回血、拖慢你，用酒精或紫外線順手清掉。</li>
+      <li><strong>善用洗手台與疫苗站</strong>：病人快被圍時，先衝去疫苗站開防護再回防。</li>
+      <li><strong>撿 PPE 保命</strong>：被追到時 PPE 能擋一下，別浪費生命。</li>
+      <li><strong>守住隔離門</strong>：門被咬破後按 <kbd>C</kbd> 補關，把病原體擋在 ICU 外。</li>
+      <li><strong>受傷後有短暫無敵</strong>（角色閃爍＋護盾圈），趁這時衝進人堆重新佈防。</li>
+    </ol>
+  </section>
+
+  <section id="faq">
+    <h2 class="sec">10 ・ 常見問題</h2>
+    <div class="callout q"><strong>Q：按 <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> 切換武器好像沒反應？</strong><br>
+      切換是有作用的（狀態列左下「TOOL」的名字與能量條顏色會變，角色頭上也會跳出提示）。但 <strong>換工具本身不會攻擊</strong>——要再 <strong>按住 <kbd>Space</kbd></strong> 才會發射。三種攻擊長得不一樣：酒精是<span class="p-alc">淡藍扇形噴霧</span>、抗生素是<span class="p-anti">黃色膠囊飛出去</span>、紫外線是<span class="p-uv">紫色直線光束</span>。</div>
+    <div class="callout q"><strong>Q：按 <kbd>C</kbd> 隔離門沒反應？</strong><br>
+      因為那扇門<strong>還關著、還沒被咬破</strong>，沒有需要關的門。<kbd>C</kbd> 只用來「重新關上被破壞的門」。門完好時按 <kbd>C</kbd> 現在會顯示「隔離門完好，無需關閉」；等到抗藥性細菌或 Boss 把門咬開，再按 <kbd>C</kbd> 就能補關（有冷卻時間）。</div>
+    <div class="callout q"><strong>Q：畫面最上方好像被說明蓋住？</strong><br>
+      上方是狀態列（HUD）。角色與敵人的活動範圍都在狀態列下方，不會被蓋住；上方那條深藍色橫幅只是資訊列，不是遊戲區域。</div>
+    <div class="callout q"><strong>Q：沒有聲音？</strong><br>
+      瀏覽器要求先有互動才能出聲——按任意鍵或點一下畫面後就會有音效。可用 <kbd>M</kbd> 開關音效、<kbd>B</kbd> 開關背景音樂。</div>
+    <div class="callout q"><strong>Q：太難了？</strong><br>
+      開始畫面用 <kbd>←</kbd> 選「簡單」；優先守病人、用對工具、撿疫苗站與急救包，會輕鬆很多。</div>
+  </section>
+
+  <section id="score">
+    <h2 class="sec">11 ・ 計分方式</h2>
+    <table>
+      <tr><th>行為</th><th>分數</th></tr>
+      <tr><td>消滅一般細菌 / 病毒 / 芽孢 / 抗藥性</td><td>100 / 120 / 180 / 300</td></tr>
+      <tr><td>清除污染、拾取 PPE、完成手部衛生</td><td>清污每格 +、PPE +20、洗手 +30</td></tr>
+      <tr><td>完成一波</td><td>+500（未受傷 +200、病人 &gt;75% 再 +150）</td></tr>
+      <tr><td>擊敗 Boss</td><td>+2000</td></tr>
+    </table>
+    <p class="dim">用錯工具不會扣分，但會顯示「無效」提示；用對工具、快速清污染、保護好病人都有額外獎勵。</p>
+  </section>
+
+  <section id="edu">
+    <h2 class="sec">12 ・ 衛教重點</h2>
+    <p>遊戲首次遇到特定情境時會跳出一次性提示卡，核心觀念：</p>
+    <ul>
+      <li>抗生素<strong>無法治療病毒</strong>感染。</li>
+      <li>部分<strong>芽孢對酒精耐受性較高</strong>，需靠紫外線／環境消毒。</li>
+      <li><strong>抗藥性</strong>會使治療選擇受限，需要組合手段。</li>
+      <li><strong>環境污染</strong>會提高院內感染風險，要即時清消。</li>
+      <li><strong>手部衛生</strong>與適當使用 <strong>PPE</strong> 可降低暴露風險。</li>
+      <li><strong>疫苗接種</strong>可降低重症感染風險。</li>
+    </ul>
+    <div class="disc">本遊戲為教育與娛樂用途，不取代正式醫療建議或感染管制指引。<br>
+      <a class="back" href="index.html">← 回到遊戲</a></div>
+  </section>
+</div>
+</body>
+</html>

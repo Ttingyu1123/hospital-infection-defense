@@ -52,8 +52,9 @@ const Tools = {
     if (cleared > 0) game.onContamCleared(cleared, px, py);
 
     game.effects.push({ type: 'cone', x: player.x, y: player.y, dir: player.dir,
-      range: cfg.range, halfAngle: cfg.halfAngle, color: cfg.color, life: 0, maxLife: 0.22 });
-    game.particles.alcoholMist(player.x + v.x * 20, player.y + v.y * 20, player.dir);
+      range: cfg.range, halfAngle: cfg.halfAngle, color: cfg.color, life: 0, maxLife: 0.34 });
+    game.particles.alcoholMist(player.x + v.x * 22, player.y + v.y * 22, player.dir);
+    game.particles.alcoholMist(player.x + v.x * cfg.range * 0.55, player.y + v.y * cfg.range * 0.55, player.dir);
     audioSys.alcoholSpray();
   },
 
@@ -119,7 +120,8 @@ const Tools = {
     ctx.rotate(DIR_ANGLE[fx.dir]);
     if (fx.type === 'cone') {
       const grad = ctx.createRadialGradient(0, 0, 6, 0, 0, fx.range);
-      grad.addColorStop(0, `rgba(180, 240, 250, ${0.5 * a})`);
+      grad.addColorStop(0, `rgba(200, 245, 252, ${0.8 * a})`);
+      grad.addColorStop(0.6, `rgba(127, 216, 232, ${0.4 * a})`);
       grad.addColorStop(1, `rgba(127, 216, 232, 0)`);
       ctx.fillStyle = grad;
       ctx.beginPath();
@@ -127,6 +129,10 @@ const Tools = {
       ctx.arc(0, 0, fx.range, -fx.halfAngle, fx.halfAngle);
       ctx.closePath();
       ctx.fill();
+      // 扇形外緣描邊，讓噴霧範圍更清楚
+      ctx.strokeStyle = `rgba(180, 240, 250, ${0.6 * a})`;
+      ctx.lineWidth = 2;
+      ctx.stroke();
     } else if (fx.type === 'beam') {
       const w = fx.halfWidth;
       const grad = ctx.createLinearGradient(0, -w, 0, w);

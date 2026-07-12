@@ -62,11 +62,11 @@ const CONST = Object.freeze({
     boss:      Object.freeze({ alcohol: 0.35, antibiotic: 0.2,  uv: 1.0 }),
   }),
 
-  // 病原體生成點（畫面上緣走廊，避開牆與 HUD）
+  // 病原體生成點（HUD 下方的空走廊，避開牆與 HUD）
   ENEMY_SPAWNS: Object.freeze([
-    Object.freeze({ x: 120, y: 84 }),
-    Object.freeze({ x: 480, y: 84 }),
-    Object.freeze({ x: 840, y: 84 }),
+    Object.freeze({ x: 180, y: 92 }),
+    Object.freeze({ x: 480, y: 92 }),
+    Object.freeze({ x: 672, y: 92 }),
   ]),
 
   // 每波：病原體組成、同時在場上限、生成間隔、是否啟用環境污染
