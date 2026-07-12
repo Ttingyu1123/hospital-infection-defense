@@ -19,10 +19,13 @@ const Tools = {
     if (toolId === 'alcohol' && type === 'spore') game.triggerTip('sporeAlcohol');
     const dmg = baseAmount * mult;
     if (dmg <= 0) {
+      game.wrongToolUses++;
       game.spawnFloatText(enemy.x, enemy.y - enemy.half - 8, '無效', '#c7d0dc');
       return 0;
     }
     if (mult >= 0.75) game.correctToolUses++;
+    else game.wrongToolUses++; // 有傷害但效果差也算選錯
+    game.onToolHit(enemy, toolId, mult);
     enemy.takeDamage(dmg, toolId, game);
     return dmg;
   },

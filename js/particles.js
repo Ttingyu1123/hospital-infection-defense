@@ -51,6 +51,7 @@ class ParticleSystem {
     this.addShake(2.5, 0.15);
   }
   shieldBreak(x, y)   { this.spawn(x, y, 14, { speed: 150, life: 0.4, size: 3, color: ['#9be0f2', '#ffffff', '#5ac6e0'] }); }
+  critSpark(x, y, color) { this.spawn(x, y, 10, { speed: 220, life: 0.28, size: 3.5, color: [color, '#ffffff'] }); this.addShake(1.5, 0.08); }
   pickupSparkle(x, y, color) { this.spawn(x, y, 12, { speed: 120, life: 0.5, size: 3, color: [color, '#ffffff'], lift: 40 }); }
   washDrops(x, y)     { this.spawn(x, y, 14, { speed: 110, life: 0.55, size: 3, color: ['#9bd8ff', '#ffffff', '#5aa6e0'], lift: 30, gravity: 180 }); }
   contamPuff(x, y)    { this.spawn(x, y, 8,  { speed: 90, life: 0.5, size: 4, color: ['#bde07a', '#8ab83c', '#eaf7d0'], lift: 20 }); }

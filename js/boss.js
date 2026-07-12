@@ -116,15 +116,14 @@ class Boss extends Entity {
   }
 
   _chooseDirection(game, forceChange) {
-    const goal = game.patientCenter;
+    const flowD = game.map.flowDir(this.x, this.y);
     const weights = [0, 0, 0, 0];
     for (let d = 0; d < 4; d++) {
       const v = DIR_VECS[d];
       const probe = this.half + 8;
       const free = this.positionFree(this.x + v.x * probe, this.y + v.y * probe, game);
       let w = free ? 1.0 : 0.5; // Boss 撞牆也常保留（會腐蝕破牆）
-      if ((v.x !== 0 && Math.sign(goal.x - this.x) === v.x && Math.abs(goal.x - this.x) > 10) ||
-          (v.y !== 0 && Math.sign(goal.y - this.y) === v.y && Math.abs(goal.y - this.y) > 10)) w *= 3.4;
+      if (d === flowD) w *= 3.6;
       if (d === (this.dir + 2) % 4) w *= 0.3;
       if (forceChange && d === this.dir) w *= 0.1;
       weights[d] = w;
@@ -199,6 +198,7 @@ class Boss extends Entity {
     ctx.save();
     ctx.fillStyle = 'rgba(20,30,20,0.2)';
     ctx.beginPath(); ctx.ellipse(x, y + r - 4, r * 0.85, r * 0.4, 0, 0, Math.PI * 2); ctx.fill();
+    if (this.hitPop > 0) { const s = 1 + this.hitPop * 0.8; ctx.translate(x, y); ctx.scale(s, s); ctx.translate(-x, -y); }
 
     // 多層細胞壁
     const outer = flash ? '#ffffff' : '#5a0f0a';
@@ -238,5 +238,6 @@ class Boss extends Entity {
       ctx.lineWidth = 4;
       ctx.beginPath(); ctx.arc(x, y, r + 8, 0, Math.PI * 2); ctx.stroke();
     }
+    if (SHOW_WEAKNESS) drawWeaknessMarker(ctx, x, y - r - 14, 'boss');
   }
 }

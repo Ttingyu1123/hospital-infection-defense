@@ -11,6 +11,7 @@ class Entity {
     this.dir = DIR.UP;
     this.alive = true;
     this.hitFlash = 0;    // 被擊中白閃
+    this.hitPop = 0;      // 被擊中的縮放彈跳（打擊感）
   }
 
   get half() { return this.size / 2; }
@@ -99,5 +100,6 @@ class Entity {
 
   updateTimers(dt) {
     if (this.hitFlash > 0) this.hitFlash -= dt;
+    if (this.hitPop > 0) this.hitPop -= dt;
   }
 }

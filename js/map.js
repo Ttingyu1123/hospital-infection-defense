@@ -49,6 +49,63 @@ class GameMap {
       this.contam.push(crow);
     }
     this._carveICU();
+    this.flow = [];
+    this.flowDirty = false;
+    this.computeFlowField();
+  }
+
+  /* 以病人為終點的距離場（Dijkstra）：病原體沿梯度下降前進。
+     成本：空地 1、隔板 4（代表腐蝕成本），牆/病床/設備不可通行。
+     門缺口為空地故成本低，會自然把病原體導向隔離門。 */
+  computeFlowField() {
+    const R = CONST.ROWS, C = CONST.COLS;
+    const INF = Infinity;
+    const dist = [];
+    for (let r = 0; r < R; r++) { dist.push(new Array(C).fill(INF)); }
+    const cost = (type) => {
+      if (type === T.WALL || type === T.BED || type === T.EQUIP) return null;
+      return type === T.PARTITION ? 4 : 1;
+    };
+    // 終點來源：病人床所在小格（cols 16..23, rows 28..29）
+    const pq = [];
+    for (let r = 28; r <= 29; r++) {
+      for (let c = 16; c <= 23; c++) { dist[r][c] = 0; pq.push([0, c, r]); }
+    }
+    // 簡易 Dijkstra（陣列 PQ，格數少、僅結構變動時重算）
+    while (pq.length) {
+      let mi = 0;
+      for (let i = 1; i < pq.length; i++) if (pq[i][0] < pq[mi][0]) mi = i;
+      const [d, c, r] = pq.splice(mi, 1)[0];
+      if (d > dist[r][c]) continue;
+      for (let k = 0; k < 4; k++) {
+        const nc = c + DIR_VECS[k].x, nr = r + DIR_VECS[k].y;
+        if (nc < 0 || nc >= C || nr < 0 || nr >= R) continue;
+        const w = cost(this.grid[nr][nc].type);
+        if (w === null) continue;
+        const nd = d + w;
+        if (nd < dist[nr][nc]) { dist[nr][nc] = nd; pq.push([nd, nc, nr]); }
+      }
+    }
+    this.flow = dist;
+    this.flowDirty = false;
+  }
+
+  flowVal(c, r) {
+    if (c < 0 || c >= CONST.COLS || r < 0 || r >= CONST.ROWS) return Infinity;
+    return this.flow[r][c];
+  }
+
+  /* 從像素座標回傳「距病人更近」的方向；無梯度可循則回 -1 */
+  flowDir(x, y) {
+    const c = Math.floor(x / CONST.TILE), r = Math.floor(y / CONST.TILE);
+    const here = this.flowVal(c, r);
+    let best = -1, bestVal = here;
+    for (let k = 0; k < 4; k++) {
+      const nc = c + DIR_VECS[k].x, nr = r + DIR_VECS[k].y;
+      const v = this.flowVal(nc, nr);
+      if (v < bestVal) { bestVal = v; best = k; }
+    }
+    return best;
   }
 
   /* ICU 病房：清出腔室 + 兩側鋼牆 + 前緣可破壞隔板（中央留隔離門缺口）。
@@ -130,6 +187,7 @@ class GameMap {
           cell.hp--;
           if (cell.hp <= 0) {
             cell.type = T.EMPTY;
+            this.flowDirty = true;
             if (particles) particles.partitionDebris(c * t + t / 2, r * t + t / 2);
           }
         }
@@ -149,6 +207,7 @@ class GameMap {
     cell.hp -= dmg;
     if (cell.hp <= 0) {
       cell.type = T.EMPTY;
+      this.flowDirty = true;
       if (particles) particles.partitionDebris(c * t + t / 2, r * t + t / 2);
       return true;
     }
@@ -239,18 +298,31 @@ class GameMap {
     for (let y = 0; y <= CONST.CANVAS_H; y += t * 2) { ctx.moveTo(0, y + 0.5); ctx.lineTo(CONST.CANVAS_W, y + 0.5); }
     ctx.stroke();
 
-    // 污染層（半透明黃綠）
+    // 污染層（半透明黃綠；色盲模式改用紫色 + 斜紋，靠色相與紋理雙重辨識）
+    const cbC = COLORBLIND;
     for (let r = 0; r < CONST.ROWS; r++) {
       for (let c = 0; c < CONST.COLS; c++) {
         const v = this.contam[r][c];
         if (v <= 0.02) continue;
         const x = c * t, y = r * t;
         const pulse = 0.12 * Math.sin(time * 3 + c + r);
-        ctx.fillStyle = `rgba(120, 190, 60, ${clamp(v * 0.55 + pulse, 0, 0.7)})`;
-        ctx.fillRect(x, y, t, t);
-        if (v > 0.5) {
-          ctx.fillStyle = `rgba(150, 210, 80, ${0.25 * v})`;
-          ctx.fillRect(x + 4, y + 4, t - 8, t - 8);
+        const a = clamp(v * 0.55 + pulse, 0, 0.7);
+        if (cbC) {
+          ctx.fillStyle = `rgba(120, 90, 200, ${a})`;
+          ctx.fillRect(x, y, t, t);
+          // 斜紋（紋理辨識）
+          ctx.strokeStyle = `rgba(255,255,255,${0.25 * v})`;
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          for (let o = -t; o < t; o += 6) { ctx.moveTo(x + o, y + t); ctx.lineTo(x + o + t, y); }
+          ctx.save(); ctx.rect(x, y, t, t); ctx.clip(); ctx.stroke(); ctx.restore();
+        } else {
+          ctx.fillStyle = `rgba(120, 190, 60, ${a})`;
+          ctx.fillRect(x, y, t, t);
+          if (v > 0.5) {
+            ctx.fillStyle = `rgba(150, 210, 80, ${0.25 * v})`;
+            ctx.fillRect(x + 4, y + 4, t - 8, t - 8);
+          }
         }
       }
     }

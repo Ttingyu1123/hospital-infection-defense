@@ -25,6 +25,7 @@ class Game {
     // 開始選單設定（跨重新開始保留）
     this.menuDifficulty = 1;   // 0 簡單 / 1 普通 / 2 困難
     this.menuEndless = false;  // 劇情五波 / 無盡模式
+    this.menuColorblind = false; // 色盲友善配色
     this.reset();
     this.state = STATE.START;
   }
@@ -89,9 +90,17 @@ class Game {
     this.tip = null;         // { text, timer }
     this.announceText = null; // { text, timer, maxTimer }
 
-    // 統計（勝利畫面）
+    // 統計（結算畫面）
     this.correctToolUses = 0;
+    this.wrongToolUses = 0;
     this.contamClearedTotal = 0;
+    this.newRecord = false;
+
+    // 打擊感
+    this.hitStop = 0;
+
+    // 教學
+    this.tutorial = null;
 
     // 計時器
     this.transitionTimer = 0;
@@ -100,11 +109,92 @@ class Game {
     this.endTimer = 0;
     this.endTarget = null;
     this.pausedFrom = null;
+
+    // 色盲配色 / 剋制提示（依選單與難度）
+    COLORBLIND = this.menuColorblind;
+  }
+
+  /* 是否顯示剋制提示標記：色盲模式 / 教學 / 簡單難度 */
+  get showWeakness() {
+    return this.menuColorblind || this.state === STATE.TUTORIAL || this.difficultyIndex === 0;
   }
 
   startGame() {
     this.reset();
     this._enterWave(0);
+  }
+
+  /* ---------- 教學關 ---------- */
+  startTutorial() {
+    this.reset();
+    this.state = STATE.TUTORIAL;
+    this.player.x = 480; this.player.y = 430; this.player.dir = DIR.UP;
+    this.player.invincible = 0; // 教學無威脅，不需無敵閃爍
+    this.player.setTool('alcohol');
+    this.tutorial = { step: 0, moved: 0, lastX: this.player.x, lastY: this.player.y };
+  }
+
+  _tutorialSpawn(type, x, y) { const e = new Pathogen(type, x, y); e.frozen = true; this.enemies.push(e); }
+
+  _tutorialSetup(step) {
+    this.enemies = []; // 清掉前一步的靶
+    if (step === 1) this._tutorialSpawn('normal', 480, 330);
+    else if (step === 2) this._tutorialSpawn('normal', 480, 210);
+    else if (step === 3) this._tutorialSpawn('virus', 480, 300);
+  }
+
+  get tutorialText() {
+    switch (this.tutorial ? this.tutorial.step : 0) {
+      case 0: return '① 用 W A S D／方向鍵移動看看';
+      case 1: return '② 面向上方病原體（按 W），按住 Space 用「酒精噴霧」消滅它';
+      case 2: return '③ 按 2 換「抗生素」，從遠處射掉上方病原體（酒精射程不夠）';
+      case 3: return '④ 按 3 換「紫外線」。抗生素對病毒無效——用紫外線消滅紫色病毒';
+      default: return '很好！正式遊戲要守住底部 ICU 病人、撐過五波。按 Enter 開始';
+    }
+  }
+
+  _updateTutorial(dt, input) {
+    const t = this.tutorial;
+    const p = this.player;
+    // 只更新玩家與投射物/特效，靶不移動、不攻擊
+    p.update(dt, this, input);
+    // 移動距離累計（step 0）
+    t.moved += Math.hypot(p.x - t.lastX, p.y - t.lastY);
+    t.lastX = p.x; t.lastY = p.y;
+
+    this._updateProjectiles(dt);
+    this._updateEffects(dt);
+    this.particles.update(dt);
+    this._updateFloatTexts(dt);
+
+    // 靶死亡 → 特效 + 進下一步
+    for (let i = this.enemies.length - 1; i >= 0; i--) {
+      if (!this.enemies[i].alive) {
+        const e = this.enemies[i];
+        this.particles.pathogenBurst(e.x, e.y, enemyColor(e.type));
+        audioSys.pathogenDestroy();
+        this.enemies.splice(i, 1);
+      }
+    }
+
+    // 步驟推進
+    if (t.step === 0) { if (t.moved > 70) { t.step = 1; this._tutorialSetup(1); } }
+    else if (t.step >= 1 && t.step <= 3) { if (this.enemies.length === 0) { t.step++; this._tutorialSetup(t.step); } }
+    // step 4：等待 Enter（onKeyDown 處理）
+  }
+
+  /* ---------- 高分（無盡模式，localStorage） ---------- */
+  _loadBest() {
+    try { return parseInt(localStorage.getItem('hid_endless_best') || '0', 10) || 0; }
+    catch (e) { return 0; }
+  }
+  _saveBest(v) {
+    try { localStorage.setItem('hid_endless_best', String(v)); } catch (e) { /* ignore */ }
+  }
+  _recordEndlessScore() {
+    if (!this.endless) return;
+    const best = this._loadBest();
+    if (this.score > best) { this._saveBest(this.score); this.newRecord = true; }
   }
 
   _enterWave(index) {
@@ -187,7 +277,18 @@ class Game {
         if (code === 'ArrowLeft' || code === 'KeyA') { this.menuDifficulty = (this.menuDifficulty + 2) % 3; audioSys.toolSwitch(); }
         else if (code === 'ArrowRight' || code === 'KeyD') { this.menuDifficulty = (this.menuDifficulty + 1) % 3; audioSys.toolSwitch(); }
         else if (code === 'ArrowUp' || code === 'ArrowDown' || code === 'KeyW' || code === 'KeyS') { this.menuEndless = !this.menuEndless; audioSys.toolSwitch(); }
+        else if (code === 'KeyV') { this.menuColorblind = !this.menuColorblind; COLORBLIND = this.menuColorblind; audioSys.toolSwitch(); }
+        else if (code === 'KeyT') this.startTutorial();
         else if (code === 'Enter' || code === 'Space' || code === 'NumpadEnter') this.startGame();
+        break;
+      case STATE.TUTORIAL:
+        if (code === 'Escape') this.startGame();                     // 略過教學直接開始
+        else if (this.tutorial && this.tutorial.step >= 4 && (code === 'Enter' || code === 'Space' || code === 'NumpadEnter')) this.startGame();
+        else if (code === 'Digit1' || code === 'Numpad1') this._switchTool('alcohol');
+        else if (code === 'Digit2' || code === 'Numpad2') this._switchTool('antibiotic');
+        else if (code === 'Digit3' || code === 'Numpad3') this._switchTool('uv');
+        else if (code === 'KeyQ') { this.player.cycleTool(-1); this._toolFeedback(); }
+        else if (code === 'KeyE') { this.player.cycleTool(1); this._toolFeedback(); }
         break;
       case STATE.PLAYING:
       case STATE.WAVE_TRANSITION:
@@ -255,8 +356,13 @@ class Game {
         this.particles.update(dt);
         this._updateEffects(dt);
         return;
+      case STATE.TUTORIAL:
+        this.time += dt;
+        this._updateTutorial(dt, input);
+        return;
       case STATE.PLAYING:
         this.time += dt;
+        if (this.hitStop > 0) { this.hitStop -= dt; this.particles.update(dt); return; } // 擊殺頓幀
         this._updateWorld(dt, input, true);
         return;
       case STATE.PLAYER_RESPAWNING:
@@ -295,6 +401,7 @@ class Game {
     this._updateItems(dt);
     this._updateEffects(dt);
     this.map.update(dt);
+    if (this.map.flowDirty) this.map.computeFlowField(); // 隔板/門破壞後更新尋路
     this.particles.update(dt);
     this._updateFloatTexts(dt);
     if (this.patientFlash > 0) this.patientFlash -= dt;
@@ -680,10 +787,19 @@ class Game {
   }
 
   _enemyDestroyed(e) {
-    this.particles.pathogenBurst(e.x, e.y, e.cfg.color);
+    this.particles.pathogenBurst(e.x, e.y, enemyColor(e.type));
     audioSys.pathogenDestroy();
     this.score += e.cfg.score;
     this.spawnFloatText(e.x, e.y - e.half - 6, `+${e.cfg.score}`, '#ffe08a');
+    this.hitStop = Math.max(this.hitStop, HIT_STOP); // 擊殺頓幀
+  }
+
+  /* 工具命中回饋（打擊感 + 正確用工具的計數） */
+  onToolHit(enemy, toolId, mult) {
+    const col = CONST.TOOLS[toolId].color;
+    this.particles.sparks(enemy.x, enemy.y);
+    if (mult >= 1.0) { this.particles.critSpark(enemy.x, enemy.y, col); enemy.hitPop = 0.12; } // 正確工具：亮火花 + 縮放彈跳
+    else enemy.hitPop = 0.06;
   }
 
   _bossDefeated() {
@@ -719,6 +835,7 @@ class Game {
     if (this.endTimer <= 0) {
       this.state = this.endTarget;
       this.endTarget = null;
+      this._recordEndlessScore();
       if (this.state === STATE.GAME_OVER) audioSys.gameOver();
       else if (this.state === STATE.VICTORY) audioSys.victory();
     }
@@ -751,6 +868,7 @@ class Game {
 
   /* ---------- 渲染 ---------- */
   render() {
+    SHOW_WEAKNESS = this.showWeakness; // 剋制提示標記顯示與否
     const ctx = this.ctx;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.fillStyle = '#0e1420';
@@ -1100,6 +1218,43 @@ class Game {
     ctx.fillText(text, x, y);
   }
 
+  /* 結算：波次/存活率/工具正確率/清污染，以及無盡最高分 */
+  _drawScoreSummary(ctx, y) {
+    const W = CONST.CANVAS_W, C = CONST.FONTS.CJK;
+    const total = this.correctToolUses + this.wrongToolUses;
+    const acc = total > 0 ? Math.round((this.correctToolUses / total) * 100) : 0;
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#c8d6e2'; ctx.font = `17px ${C}`;
+    const waveLabel = this.endless ? `無盡到達 第 ${this.waveIndex + 1} 波` : `到達 第 ${this.waveIndex + 1} 波`;
+    ctx.fillText(`${waveLabel} ・ 病人存活率 ${Math.max(0, Math.ceil(this.patientHp))}%`, W / 2, y);
+    ctx.fillText(`工具選擇正確率 ${acc}%（正確 ${this.correctToolUses}／用錯 ${this.wrongToolUses}）・ 清除污染 ${this.contamClearedTotal} 格`, W / 2, y + 26);
+    if (this.endless) {
+      ctx.fillStyle = this.newRecord ? '#ffd166' : '#8ee0c0';
+      ctx.font = `bold 16px ${C}`;
+      ctx.fillText(this.newRecord ? `★ 新紀錄！最高分 ${this.score}` : `目前最高分 ${this._loadBest()}`, W / 2, y + 52);
+    }
+  }
+
+  /* 衛教重點 recap（結算畫面強化學習） */
+  _drawRecap(ctx, y) {
+    const W = CONST.CANVAS_W, C = CONST.FONTS.CJK;
+    const lines = [
+      '抗生素治不了病毒；病毒與芽孢要靠紫外線／環境消毒',
+      '抗藥性限制治療選擇，需要組合手段',
+      '勤洗手、正確使用 PPE、接種疫苗，都能降低感染風險',
+    ];
+    const boxW = 640, x = (W - boxW) / 2, boxH = 24 + lines.length * 26;
+    ctx.fillStyle = 'rgba(16, 40, 56, 0.85)';
+    this._roundRect(ctx, x, y, boxW, boxH, 10); ctx.fill();
+    ctx.strokeStyle = 'rgba(127,224,208,0.5)'; ctx.lineWidth = 1.5;
+    this._roundRect(ctx, x, y, boxW, boxH, 10); ctx.stroke();
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#7fe0d0'; ctx.font = `bold 15px ${C}`;
+    ctx.fillText('衛教重點', W / 2, y + 20);
+    ctx.fillStyle = '#d3e0ea'; ctx.font = `14px ${C}`;
+    for (let i = 0; i < lines.length; i++) ctx.fillText('・' + lines[i], W / 2, y + 44 + i * 26);
+  }
+
   _drawOverlay(ctx) {
     const W = CONST.CANVAS_W, H = CONST.CANVAS_H, C = CONST.FONTS.CJK, M = CONST.FONTS.MONO;
     const dim = (a) => { ctx.fillStyle = `rgba(6, 14, 24, ${a})`; ctx.fillRect(0, 0, W, H); };
@@ -1126,33 +1281,63 @@ class Game {
         ctx.fillStyle = '#b98cf0'; ctx.font = `bold 17px ${C}`; ctx.fillText('③ 紫外線', lx, 352);
         ctx.fillStyle = '#c8d6e2'; ctx.font = `15px ${C}`; ctx.fillText('慢速光束穿透多敵，剋病毒、芽孢與污染，破 Boss 護盾', lx + 128, 352);
         ctx.textAlign = 'center';
-        // 難度 / 模式選擇
+        // 難度 / 模式 / 色盲
         const diffs = CONST.DIFFICULTY;
         ctx.font = `bold 15px ${C}`; ctx.fillStyle = '#8fa8ba';
-        ctx.fillText('難度（← →）', W / 2 - 200, 396);
+        ctx.fillText('難度（← →）', W / 2 - 250, 394);
         for (let i = 0; i < diffs.length; i++) {
           const sel = i === this.menuDifficulty;
           ctx.fillStyle = sel ? '#ffe08a' : '#5f7688';
           ctx.font = `bold ${sel ? 18 : 15}px ${C}`;
-          ctx.fillText(diffs[i].name, W / 2 - 80 + i * 70, 396);
+          ctx.fillText(diffs[i].name, W / 2 - 130 + i * 66, 394);
         }
         ctx.font = `bold 15px ${C}`; ctx.fillStyle = '#8fa8ba';
-        ctx.fillText('模式（↑ ↓）', W / 2 - 200, 424);
+        ctx.fillText('色盲友善（V）', W / 2 + 100, 394);
+        ctx.font = `bold 16px ${C}`; ctx.fillStyle = this.menuColorblind ? '#7fe0d0' : '#5f7688';
+        ctx.fillText(this.menuColorblind ? 'ON' : 'OFF', W / 2 + 200, 394);
+
+        ctx.font = `bold 15px ${C}`; ctx.fillStyle = '#8fa8ba';
+        ctx.fillText('模式（↑ ↓）', W / 2 - 250, 422);
         ctx.font = `bold 16px ${C}`;
         ctx.fillStyle = !this.menuEndless ? '#7fe0d0' : '#5f7688';
-        ctx.fillText('劇情五波', W / 2 - 80, 424);
+        ctx.fillText('劇情五波', W / 2 - 130, 422);
         ctx.fillStyle = this.menuEndless ? '#7fe0d0' : '#5f7688';
-        ctx.fillText('無盡模式', W / 2 + 10, 424);
-        // 操作
-        ctx.fillStyle = '#9db6c8'; ctx.font = `14px ${C}`;
-        ctx.fillText('WASD/方向鍵 移動 ・ Space 使用工具 ・ 1/2/3 或 Q/E 切換 ・ C 關隔離門 ・ P 暫停 ・ M 音效', W / 2, 454);
-        // 聲明
-        ctx.fillStyle = '#7a93a4'; ctx.font = `13px ${C}`;
-        ctx.fillText('本遊戲為教育與娛樂用途，不取代正式醫療建議或感染管制指引。', W / 2, 480);
-        // 開始
+        ctx.fillText('無盡模式', W / 2 - 40, 422);
+        if (this.menuEndless) {
+          ctx.fillStyle = '#ffd166'; ctx.font = `bold 14px ${C}`;
+          ctx.fillText(`最高分 ${this._loadBest()}`, W / 2 + 150, 422);
+        }
+        // 新手教學提示
+        ctx.fillStyle = '#7fe0d0'; ctx.font = `bold 16px ${C}`;
+        ctx.fillText('▶ 新手建議先看教學：按 T', W / 2, 452);
+        // 操作 + 聲明
+        ctx.fillStyle = '#9db6c8'; ctx.font = `13px ${C}`;
+        ctx.fillText('WASD/方向鍵 移動 ・ Space 使用工具 ・ 1/2/3 或 Q/E 切換 ・ C 關隔離門 ・ P 暫停 ・ M 音效', W / 2, 476);
+        ctx.fillStyle = '#7a93a4'; ctx.font = `12px ${C}`;
+        ctx.fillText('本遊戲為教育與娛樂用途，不取代正式醫療建議或感染管制指引。', W / 2, 498);
         if (Math.floor(this.timeGlobal * 2) % 2 === 0) {
-          ctx.fillStyle = '#ffe08a'; ctx.font = `bold 26px ${M}`;
-          ctx.fillText('PRESS ENTER TO START', W / 2, 520);
+          ctx.fillStyle = '#ffe08a'; ctx.font = `bold 24px ${M}`;
+          ctx.fillText('PRESS ENTER TO START', W / 2, 528);
+        }
+        break;
+      }
+      case STATE.TUTORIAL: {
+        // 頂部教學指示條
+        const step = this.tutorial ? this.tutorial.step : 0;
+        ctx.fillStyle = 'rgba(16, 40, 56, 0.92)';
+        ctx.fillRect(0, CONST.HUD_H, W, 46);
+        ctx.fillStyle = '#7fe0d0'; ctx.font = `bold 13px ${C}`; ctx.textAlign = 'left';
+        ctx.fillText(`教學 ${Math.min(step + 1, 5)}/5`, 16, CONST.HUD_H + 28);
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#eaf7f4'; ctx.font = `bold 18px ${C}`;
+        ctx.fillText(this.tutorialText, W / 2, CONST.HUD_H + 29);
+        ctx.textAlign = 'right';
+        ctx.fillStyle = '#7c93aa'; ctx.font = `13px ${C}`;
+        ctx.fillText('Esc 略過', W - 16, CONST.HUD_H + 28);
+        ctx.textAlign = 'center';
+        if (step >= 4 && Math.floor(this.timeGlobal * 2) % 2 === 0) {
+          ctx.fillStyle = '#ffe08a'; ctx.font = `bold 22px ${M}`;
+          ctx.fillText('PRESS ENTER', W / 2, H - 40);
         }
         break;
       }
@@ -1180,26 +1365,25 @@ class Game {
         break;
       }
       case STATE.GAME_OVER: {
-        dim(0.8);
-        this._title(ctx, '院內感染失控', W / 2, H / 2 - 74, 52, '#ff5d5d');
-        ctx.fillStyle = '#ffe08a'; ctx.font = `bold 25px ${M}`;
-        ctx.fillText(`最終分數 ${this.score}`, W / 2, H / 2 - 20);
-        ctx.fillStyle = '#c8d6e2'; ctx.font = `18px ${C}`;
-        ctx.fillText(`到達波次：第 ${this.waveIndex + 1} 波 ・ 病人剩餘生命：${Math.max(0, Math.ceil(this.patientHp))}%`, W / 2, H / 2 + 18);
+        dim(0.82);
+        this._title(ctx, '院內感染失控', W / 2, 150, 50, '#ff5d5d');
+        ctx.fillStyle = '#ffe08a'; ctx.font = `bold 26px ${M}`;
+        ctx.fillText(`最終分數 ${this.score}`, W / 2, 200);
+        this._drawScoreSummary(ctx, 244);
+        this._drawRecap(ctx, 330);
         ctx.fillStyle = '#9fb0c6'; ctx.font = `bold 19px ${M}`;
-        ctx.fillText('PRESS R TO RESTART', W / 2, H / 2 + 62);
+        ctx.fillText('PRESS R TO RESTART', W / 2, 512);
         break;
       }
       case STATE.VICTORY: {
-        dim(0.8);
-        this._title(ctx, this.endless ? '防疫任務結束' : '院內感染控制成功', W / 2, H / 2 - 90, 48, '#57e08a');
-        ctx.fillStyle = '#ffe08a'; ctx.font = `bold 25px ${M}`;
-        ctx.fillText(`最終分數 ${this.score}`, W / 2, H / 2 - 36);
-        ctx.fillStyle = '#c8d6e2'; ctx.font = `17px ${C}`;
-        ctx.fillText(`病人存活率：${Math.max(0, Math.ceil(this.patientHp))}%`, W / 2, H / 2);
-        ctx.fillText(`正確工具使用：${this.correctToolUses} 次 ・ 清除污染：${this.contamClearedTotal} 格`, W / 2, H / 2 + 28);
-        ctx.fillStyle = '#9fb0c6'; ctx.font = `18px ${C}`;
-        ctx.fillText('按 R 再玩一次', W / 2, H / 2 + 68);
+        dim(0.82);
+        this._title(ctx, this.endless ? '防疫任務結束' : '院內感染控制成功', W / 2, 148, 46, '#57e08a');
+        ctx.fillStyle = '#ffe08a'; ctx.font = `bold 26px ${M}`;
+        ctx.fillText(`最終分數 ${this.score}`, W / 2, 198);
+        this._drawScoreSummary(ctx, 242);
+        this._drawRecap(ctx, 330);
+        ctx.fillStyle = '#9fb0c6'; ctx.font = `16px ${C}`;
+        ctx.fillText('按 R 再玩一次', W / 2, 512);
         break;
       }
     }

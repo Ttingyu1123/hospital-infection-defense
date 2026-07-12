@@ -150,6 +150,7 @@ const T = Object.freeze({
 /* 遊戲狀態 */
 const STATE = Object.freeze({
   START: 'START',
+  TUTORIAL: 'TUTORIAL',
   PLAYING: 'PLAYING',
   PAUSED: 'PAUSED',
   WAVE_TRANSITION: 'WAVE_TRANSITION',
@@ -158,6 +159,40 @@ const STATE = Object.freeze({
   GAME_OVER: 'GAME_OVER',
   VICTORY: 'VICTORY',
 });
+
+/* 色盲友善配色（Okabe-Ito 系）與剋制提示 */
+let COLORBLIND = false; // 由 Game 切換，pathogen/boss/map 讀取
+const CB_ENEMY = Object.freeze({
+  normal:    Object.freeze({ color: '#0072b2', dark: '#024e7a' }), // 藍
+  virus:     Object.freeze({ color: '#cc79a7', dark: '#8a3d6e' }), // 洋紅
+  spore:     Object.freeze({ color: '#e69f00', dark: '#9a6a00' }), // 橙
+  resistant: Object.freeze({ color: '#d55e00', dark: '#7a3500' }), // 朱紅
+});
+/* 每種病原體「最推薦」的剋制工具（用於剋制提示標記與教學） */
+const WEAK_TOOL = Object.freeze({
+  normal: 'alcohol', virus: 'uv', spore: 'uv', resistant: 'uv', boss: 'uv',
+});
+function enemyColor(type) { return COLORBLIND && CB_ENEMY[type] ? CB_ENEMY[type].color : CONST.ENEMY_TYPES[type].color; }
+function enemyDark(type)  { return COLORBLIND && CB_ENEMY[type] ? CB_ENEMY[type].dark  : CONST.ENEMY_TYPES[type].dark; }
+let SHOW_WEAKNESS = false; // 由 Game 每幀依狀態/難度設定（剋制提示標記）
+
+/* 在敵人頭上畫「該用哪種工具」的小點（工具色）+ 數字，教學/色盲輔助 */
+function drawWeaknessMarker(ctx, x, y, type) {
+  const toolId = WEAK_TOOL[type] || 'uv';
+  const tool = CONST.TOOLS[toolId];
+  ctx.save();
+  ctx.fillStyle = tool.color;
+  ctx.strokeStyle = 'rgba(0,0,0,0.55)'; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.arc(x, y, 6, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = '#10202e';
+  ctx.font = `bold 9px ${CONST.FONTS.MONO}`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(tool.key, x, y + 0.5); // 1/2/3
+  ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+  ctx.restore();
+}
+
+const HIT_STOP = 0.05; // 擊殺頓幀秒數（打擊感）
 
 /* 共用小工具 */
 function aabbOverlap(ax, ay, aw, ah, bx, by, bw, bh) {

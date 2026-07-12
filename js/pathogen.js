@@ -90,22 +90,24 @@ class Pathogen extends Entity {
     }
   }
 
-  /* 方向權重：可通行 > 朝病人 > 偶爾朝玩家 > 避免回頭 */
+  /* 方向權重：可通行 > 沿 flow-field 朝病人 > 偶爾追玩家 > 避免回頭。
+     用地圖距離場（flowDir）取代直線判斷，讓病原體會繞牆、明確撲向 ICU。 */
   _chooseDirection(game, forceChange) {
-    const target = game.patientCenter;
     const player = game.player;
     const chasePlayer = player && player.alive && !this.cfg.targetsPatient &&
-      Math.hypot(player.x - this.x, player.y - this.y) < 160 && Math.random() < 0.4;
-    const goal = chasePlayer ? player : target;
+      Math.hypot(player.x - this.x, player.y - this.y) < 150 && Math.random() < 0.4;
+    const flowD = chasePlayer ? -1 : game.map.flowDir(this.x, this.y);
     const weights = [0, 0, 0, 0];
     for (let d = 0; d < 4; d++) {
       const v = DIR_VECS[d];
       const probe = 26;
       const free = this.positionFree(this.x + v.x * probe, this.y + v.y * probe, game);
-      let w = free ? 1.0 : 0.14;
-      const towardX = v.x !== 0 && Math.sign(goal.x - this.x) === v.x && Math.abs(goal.x - this.x) > 10;
-      const towardY = v.y !== 0 && Math.sign(goal.y - this.y) === v.y && Math.abs(goal.y - this.y) > 10;
-      if (towardX || towardY) w *= this.cfg.targetsPatient ? 3.6 : 2.8;
+      let w = free ? 1.0 : 0.16; // 受阻仍保留低權重：讓牠們願意去啃隔板/門
+      if (chasePlayer) {
+        if ((v.x !== 0 && Math.sign(player.x - this.x) === v.x) || (v.y !== 0 && Math.sign(player.y - this.y) === v.y)) w *= 2.6;
+      } else if (d === flowD) {
+        w *= this.cfg.targetsPatient ? 4.4 : 3.4;
+      }
       if (d === (this.dir + 2) % 4) w *= 0.28;             // 避免立即回頭
       if (this.cfg.erratic) w *= 0.6 + Math.random() * 0.9; // 病毒不規則
       if (forceChange && d === this.dir) w *= 0.1;
@@ -114,7 +116,7 @@ class Pathogen extends Entity {
     const total = weights[0] + weights[1] + weights[2] + weights[3];
     let roll = Math.random() * total;
     for (let d = 0; d < 4; d++) { roll -= weights[d]; if (roll <= 0) { this.setDir(d, game); break; } }
-    this.decisionTimer = (this.cfg.erratic ? 0.5 : 1.1) + Math.random() * (this.cfg.erratic ? 0.6 : 1.4);
+    this.decisionTimer = (this.cfg.erratic ? 0.5 : 1.0) + Math.random() * (this.cfg.erratic ? 0.6 : 1.2);
   }
 
   takeDamage(dmg, toolId, game) {
@@ -135,8 +137,11 @@ class Pathogen extends Entity {
     ctx.fillStyle = 'rgba(30,50,60,0.12)';
     ctx.beginPath(); ctx.ellipse(x, y + r - 1, r * 0.75, r * 0.35, 0, 0, Math.PI * 2); ctx.fill();
 
-    const body = flash ? '#ffffff' : this.cfg.color;
-    const dark = flash ? '#ffb0b0' : this.cfg.dark;
+    // 被擊中縮放彈跳（打擊感）
+    if (this.hitPop > 0) { const s = 1 + this.hitPop * 1.4; ctx.translate(x, y); ctx.scale(s, s); ctx.translate(-x, -y); }
+
+    const body = flash ? '#ffffff' : enemyColor(this.type);
+    const dark = flash ? '#ffb0b0' : enemyDark(this.type);
     switch (this.type) {
       case 'normal': this._drawBlob(ctx, x, y, r, body, dark, 7); break;
       case 'virus':  this._drawVirus(ctx, x, y, r, body, dark); break;
@@ -153,6 +158,9 @@ class Pathogen extends Entity {
       ctx.fillStyle = '#ff6b6b';
       ctx.fillRect(x - bw / 2, y - r - 8, bw * hpFrac, 4);
     }
+
+    // 剋制提示標記（色盲/教學/簡單）：在頭上畫該用哪種工具的小點
+    if (SHOW_WEAKNESS) drawWeaknessMarker(ctx, x, y - r - (this.maxHp > 1 ? 14 : 8), this.type);
   }
 
   _drawBlob(ctx, x, y, r, body, dark, lobes) {
