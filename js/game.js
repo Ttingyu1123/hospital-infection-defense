@@ -187,17 +187,17 @@ class Game {
         if (code === 'ArrowLeft' || code === 'KeyA') { this.menuDifficulty = (this.menuDifficulty + 2) % 3; audioSys.toolSwitch(); }
         else if (code === 'ArrowRight' || code === 'KeyD') { this.menuDifficulty = (this.menuDifficulty + 1) % 3; audioSys.toolSwitch(); }
         else if (code === 'ArrowUp' || code === 'ArrowDown' || code === 'KeyW' || code === 'KeyS') { this.menuEndless = !this.menuEndless; audioSys.toolSwitch(); }
-        else if (code === 'Enter' || code === 'Space') this.startGame();
+        else if (code === 'Enter' || code === 'Space' || code === 'NumpadEnter') this.startGame();
         break;
       case STATE.PLAYING:
       case STATE.WAVE_TRANSITION:
       case STATE.PLAYER_RESPAWNING:
       case STATE.BOSS_INTRO:
         if (code === 'KeyP') { this.pausedFrom = this.state; this.state = STATE.PAUSED; break; }
-        if (code === 'Enter' || code === 'Space') { if (this.tip) this.tip = null; }
-        if (code === 'Digit1') this._switchTool('alcohol');
-        if (code === 'Digit2') this._switchTool('antibiotic');
-        if (code === 'Digit3') this._switchTool('uv');
+        if (code === 'Enter' || code === 'Space' || code === 'NumpadEnter') { if (this.tip) this.tip = null; }
+        if (code === 'Digit1' || code === 'Numpad1') this._switchTool('alcohol');
+        if (code === 'Digit2' || code === 'Numpad2') this._switchTool('antibiotic');
+        if (code === 'Digit3' || code === 'Numpad3') this._switchTool('uv');
         if (code === 'KeyQ') { this.player.cycleTool(-1); this._toolFeedback(); }
         if (code === 'KeyE') { this.player.cycleTool(1); this._toolFeedback(); }
         if (code === 'KeyC') this.recloseDoors();
