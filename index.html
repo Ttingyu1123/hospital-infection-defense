@@ -3,14 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>IRON VANGUARD — 坦克保衛戰</title>
+<title>醫院防疫大作戰 — Hospital Infection Defense</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 <div id="frame">
   <header>
-    <h1>IRON VANGUARD</h1>
-    <p class="subtitle">坦克保衛戰 — 守住基地，撐過 5 波進攻</p>
+    <h1>醫院防疫大作戰</h1>
+    <p class="subtitle">Hospital Infection Defense — 守護 ICU 病人，擊退五波病原體與最終 Boss</p>
   </header>
   <div id="canvas-wrap">
     <canvas id="game" width="960" height="720"></canvas>
@@ -18,11 +18,12 @@
   <footer>
     <div class="controls">
       <span><b>WASD / 方向鍵</b> 移動</span>
-      <span><b>Space</b> 射擊</span>
+      <span><b>Space</b> 使用工具</span>
+      <span><b>1 / 2 / 3</b> 或 <b>Q / E</b> 切換工具</span>
+      <span><b>C</b> 關隔離門</span>
       <span><b>P</b> 暫停</span>
-      <span><b>M</b> 音效開關</span>
-      <span><b>B</b> 音樂開關</span>
-      <span><b>R</b> 結束後重新開始</span>
+      <span><b>M</b> 音效 ・ <b>B</b> 音樂</span>
+      <span><b>R</b> 結束後重玩</span>
     </div>
   </footer>
 </div>
@@ -30,10 +31,13 @@
 <script src="js/audio.js"></script>
 <script src="js/particles.js"></script>
 <script src="js/map.js"></script>
-<script src="js/bullet.js"></script>
-<script src="js/tank.js"></script>
+<script src="js/entity.js"></script>
+<script src="js/projectile.js"></script>
+<script src="js/tools.js"></script>
+<script src="js/items.js"></script>
 <script src="js/player.js"></script>
-<script src="js/enemy.js"></script>
+<script src="js/pathogen.js"></script>
+<script src="js/boss.js"></script>
 <script src="js/game.js"></script>
 <script src="js/main.js"></script>
 </body>

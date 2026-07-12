@@ -183,17 +183,28 @@ class AudioSys {
     } catch (e) { /* ignore */ }
   }
 
-  playerShoot()  { this._beep(900, 300, 0.07, 'square', 0.5); }
-  enemyShoot()   { this._beep(480, 180, 0.08, 'sawtooth', 0.3); }
-  hitWall()      { this._noise(0.05, 0.35, 1400); }
-  brickBreak()   { this._noise(0.14, 0.5, 900); this._beep(220, 90, 0.1, 'triangle', 0.3); }
-  bulletCancel() { this._beep(1200, 500, 0.05, 'square', 0.25); }
-  tankExplode()  { this._noise(0.4, 0.7, 500); this._beep(130, 30, 0.4, 'sine', 0.7); }
-  baseExplode()  { this._noise(0.9, 0.9, 350); this._beep(90, 22, 0.9, 'sine', 0.9); this._noise(0.6, 0.6, 200, 0.15); }
-  playerHit()    { this._beep(300, 60, 0.3, 'sawtooth', 0.5); }
-  waveStart()    { this._beep(440, 440, 0.12, 'square', 0.4); this._beep(660, 660, 0.14, 'square', 0.4, 0.16); }
-  victory()      { [523, 659, 784, 1047].forEach((f, i) => this._beep(f, f, 0.18, 'square', 0.4, i * 0.18)); }
-  gameOver()     { [392, 311, 233, 155].forEach((f, i) => this._beep(f, f * 0.9, 0.3, 'triangle', 0.4, i * 0.25)); }
+  /* ---------- 遊戲音效 ---------- */
+  alcoholSpray()   { this._noise(0.16, 0.28, 3200); }
+  antibioticFire() { this._beep(720, 420, 0.08, 'triangle', 0.4); }
+  uvBeam()         { this._beep(300, 900, 0.24, 'sine', 0.35); this._noise(0.2, 0.15, 4000); }
+  toolSwitch()     { this._beep(560, 760, 0.06, 'square', 0.3); }
+  pathogenHit()    { this._noise(0.05, 0.3, 1600); }
+  pathogenDestroy(){ this._noise(0.22, 0.5, 800); this._beep(260, 90, 0.2, 'triangle', 0.4); }
+  playerHit()      { this._beep(320, 70, 0.3, 'sawtooth', 0.5); }
+  shieldBreak()    { this._beep(900, 300, 0.14, 'square', 0.35); this._noise(0.1, 0.25, 3000); }
+  itemPickup()     { this._beep(660, 990, 0.1, 'square', 0.4); this._beep(990, 1320, 0.1, 'square', 0.35, 0.09); }
+  handWash()       { this._noise(0.4, 0.22, 2600); this._beep(520, 780, 0.12, 'sine', 0.3); }
+  doorClose()      { this._beep(400, 180, 0.14, 'square', 0.35); this._noise(0.1, 0.3, 900); }
+  patientAlarm()   { this._beep(880, 880, 0.09, 'square', 0.35); this._beep(880, 880, 0.09, 'square', 0.35, 0.14); }
+  contamClear()    { this._beep(500, 800, 0.1, 'sine', 0.25); }
+  waveStart()      { this._beep(440, 440, 0.12, 'square', 0.4); this._beep(660, 660, 0.14, 'square', 0.4, 0.16); }
+  bossIntro()      { [147, 155, 165, 175].forEach((f, i) => this._beep(f, f, 0.35, 'sawtooth', 0.45, i * 0.22)); this._noise(1.0, 0.4, 500, 0.1); }
+  bossFire()       { this._beep(220, 90, 0.12, 'sawtooth', 0.4); }
+  bossShield()     { this._beep(300, 600, 0.2, 'sine', 0.35); }
+  bossPhase()      { this._beep(200, 500, 0.25, 'sawtooth', 0.5); this._noise(0.3, 0.3, 700); }
+  bossExplode()    { this._noise(1.0, 0.8, 400); this._beep(120, 28, 0.9, 'sine', 0.8); this._noise(0.6, 0.5, 250, 0.2); }
+  victory()        { [523, 659, 784, 1047, 1319].forEach((f, i) => this._beep(f, f, 0.2, 'square', 0.4, i * 0.16)); }
+  gameOver()       { [392, 311, 233, 155].forEach((f, i) => this._beep(f, f * 0.9, 0.3, 'triangle', 0.4, i * 0.25)); }
 }
 
 const audioSys = new AudioSys();

@@ -2,7 +2,7 @@
 
 html, body {
   height: 100%;
-  background: #0b0e14;
+  background: #0a121c;
   color: #cfd8e3;
   font-family: Consolas, Menlo, "Courier New", monospace;
   overflow: hidden;
@@ -22,12 +22,13 @@ header {
 }
 
 header h1 {
+  font-family: "Microsoft JhengHei", "PingFang TC", "Noto Sans TC", sans-serif;
   font-size: 24px;
   font-weight: 700;
-  letter-spacing: 10px;
-  padding-left: 10px; /* 抵銷最後一字的字距，維持視覺置中 */
-  color: #f0c040;
-  text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.85), 0 0 14px rgba(240, 192, 64, 0.4);
+  letter-spacing: 8px;
+  padding-left: 8px; /* 抵銷最後一字的字距，維持視覺置中 */
+  color: #7fe0d0;
+  text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.85), 0 0 14px rgba(127, 224, 208, 0.4);
 }
 
 .subtitle {
@@ -49,13 +50,13 @@ header h1 {
 }
 
 canvas#game {
-  background: #10141c;
-  border: 2px solid #2a3342;
+  background: #0e1420;
+  border: 2px solid #234050;
   box-shadow: 0 0 30px rgba(0, 0, 0, 0.6);
-  image-rendering: pixelated;
-  /* JS 設定實際顯示尺寸，維持 4:3；邏輯解析度固定 960x720 */
+  /* CSS 等比縮放；邏輯解析度固定 960x720，縮放不影響碰撞 */
   max-width: 100%;
   max-height: 100%;
+  aspect-ratio: 4 / 3;
 }
 
 footer {
@@ -65,7 +66,9 @@ footer {
 
 .controls {
   display: flex;
-  gap: 20px;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px 18px;
   font-family: "Microsoft JhengHei", "PingFang TC", "Noto Sans TC", sans-serif;
   font-size: 13px;
   letter-spacing: 1px;
