@@ -31,6 +31,9 @@ class Entity {
     for (const w of game.washStations) {
       if (aabbOverlap(x - h, y - h, this.size, this.size, w.x, w.y, w.w, w.h)) return false;
     }
+    for (const v of game.vaccineStations) {
+      if (aabbOverlap(x - h, y - h, this.size, this.size, v.x, v.y, v.w, v.h)) return false;
+    }
     if (this.extraBlocked(x, y, game)) return false;
     for (const other of game.allUnits()) {
       if (other === this || !other.alive) continue;

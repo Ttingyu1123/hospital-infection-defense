@@ -39,6 +39,20 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   await page.evaluate(() => { window.__DEBUG = true; window.__game.state = 'PLAYING'; if (!window.__game.boss) window.__game._spawnBoss(); window.__game.boss.hp = window.__game.boss.maxHp * 0.25; });
   await sleep(600);
   await page.screenshot({ path: 'test/shots/05_boss.png' });
+  await page.close();
+
+  // touch controls view (forced) + start menu with bigger fonts
+  const tp = await b.newPage({ viewport: { width: 1000, height: 820 } });
+  await tp.goto('http://127.0.0.1:8791/?touch=1');
+  await tp.waitForFunction(() => window.__game !== undefined);
+  await sleep(400);
+  await tp.screenshot({ path: 'test/shots/06_touch_start.png' });
+  await tp.evaluate(() => { document.getElementById('game').dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })); });
+  await sleep(3200);
+  await tp.evaluate(() => { const g = window.__game; g.enemies.push(new Pathogen('normal', 300, 260), new Pathogen('virus', 620, 240)); g.patientShield = 10; });
+  await sleep(300);
+  await tp.screenshot({ path: 'test/shots/07_touch_play.png' });
+
   await b.close();
   console.log('shots done');
 })();

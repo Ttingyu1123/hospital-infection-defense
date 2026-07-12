@@ -7,7 +7,10 @@ class Input {
   constructor() {
     this.down = new Set();
     this.dirStack = []; // 目前按住的方向鍵，最後按的優先
+    this.touchDir = null; // 觸控搖桿方向（優先於鍵盤）
   }
+
+  setTouchDir(d) { this.touchDir = d; }
 
   static dirOf(code) {
     switch (code) {
@@ -35,6 +38,7 @@ class Input {
   }
 
   currentDir() {
+    if (this.touchDir !== null) return this.touchDir;
     return this.dirStack.length > 0 ? this.dirStack[this.dirStack.length - 1] : null;
   }
 
@@ -62,6 +66,9 @@ class Input {
   });
 
   window.addEventListener('pointerdown', () => audioSys.ensure());
+
+  // 觸控控制（行動裝置；桌面自動隱藏）
+  if (typeof setupTouchControls === 'function') setupTouchControls(game, input, canvas);
 
   // 單一遊戲迴圈；dt 有上限避免切換分頁後瞬移
   let last = performance.now();

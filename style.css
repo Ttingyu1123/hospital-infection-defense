@@ -79,3 +79,66 @@ footer {
   color: #9fb0c6;
   font-family: Consolas, Menlo, "Courier New", monospace;
 }
+
+/* ---- 觸控控制（預設隱藏，setupTouchControls 動態插入後才顯示） ---- */
+#touch {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 50;
+  touch-action: none;
+  user-select: none;
+}
+
+#tc-stick {
+  position: absolute;
+  left: 24px;
+  bottom: 28px;
+  width: 128px;
+  height: 128px;
+  border-radius: 50%;
+  background: rgba(20, 40, 56, 0.4);
+  border: 2px solid rgba(127, 224, 208, 0.5);
+  pointer-events: auto;
+  touch-action: none;
+}
+
+#tc-nub {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 56px;
+  height: 56px;
+  margin: -28px 0 0 -28px;
+  border-radius: 50%;
+  background: rgba(127, 224, 208, 0.75);
+  box-shadow: 0 0 12px rgba(127, 224, 208, 0.5);
+}
+
+#tc-actions {
+  position: absolute;
+  right: 20px;
+  bottom: 28px;
+  display: grid;
+  grid-template-columns: repeat(3, 72px);
+  gap: 12px;
+  pointer-events: none;
+}
+
+.tc-btn {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  border: 2px solid rgba(159, 176, 198, 0.6);
+  background: rgba(20, 40, 56, 0.55);
+  color: #eaf7f4;
+  font-family: "Microsoft JhengHei", "PingFang TC", "Noto Sans TC", sans-serif;
+  font-size: 22px;
+  font-weight: 700;
+  pointer-events: auto;
+  touch-action: none;
+}
+
+.tc-btn.active { background: rgba(127, 224, 208, 0.55); transform: scale(0.94); }
+.tc-tool { border-color: rgba(127, 216, 232, 0.7); }
+.tc-fire { border-color: rgba(242, 193, 78, 0.85); background: rgba(80, 60, 20, 0.55); font-size: 24px; }

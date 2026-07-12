@@ -104,6 +104,18 @@ const CONST = Object.freeze({
   ISOLATION_SLOW_TIME: 6.0,
   ITEM_LIFETIME: 12.0,
 
+  // 疫苗接種站：給病人一段時間的傷害減免
+  VACCINE_CD: 14.0,
+  PATIENT_SHIELD_TIME: 12.0,
+  PATIENT_SHIELD_MUL: 0.45,  // 疫苗防護期間病人受傷倍率
+
+  // 難度：套用於敵人數值、病人受傷、玩家無敵時間
+  DIFFICULTY: Object.freeze([
+    Object.freeze({ name: '簡單', enemyHp: 0.8, enemySpeed: 0.85, spawnMul: 1.3, patientDmg: 0.7, invulnMul: 1.35 }),
+    Object.freeze({ name: '普通', enemyHp: 1.0, enemySpeed: 1.0,  spawnMul: 1.0, patientDmg: 1.0, invulnMul: 1.0 }),
+    Object.freeze({ name: '困難', enemyHp: 1.3, enemySpeed: 1.15, spawnMul: 0.82, patientDmg: 1.4, invulnMul: 0.8 }),
+  ]),
+
   MAX_PARTICLES: 480,
 
   SCORE: Object.freeze({

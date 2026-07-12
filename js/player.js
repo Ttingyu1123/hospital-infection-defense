@@ -7,6 +7,7 @@ class Player extends Entity {
     const P = CONST.PLAYER;
     super(P.spawnX, P.spawnY, CONST.UNIT_SIZE, P.speed);
     this.lives = P.lives;
+    this.invincibleMul = 1;   // 由難度設定
     this.invincible = P.invincibleTime;
     this.dir = DIR.UP;
 
@@ -28,7 +29,7 @@ class Player extends Entity {
     this.x = P.spawnX; this.y = P.spawnY;
     this.dir = DIR.UP;
     this.alive = true;
-    this.invincible = P.invincibleTime;
+    this.invincible = P.invincibleTime * this.invincibleMul;
     this.activeBullets = 0;
     for (const k in this.cooldowns) this.cooldowns[k] = 0;
   }
@@ -94,7 +95,7 @@ class Player extends Entity {
     if (this.invincible > 0) return 'ignore';
     if (this.ppe > 0) {
       this.ppe--;
-      this.invincible = 1.0;
+      this.invincible = 1.0 * this.invincibleMul;
       this.hitFlash = 0.12;
       game.particles.shieldBreak(this.x, this.y);
       audioSys.shieldBreak();

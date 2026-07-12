@@ -21,6 +21,7 @@ class Boss extends Entity {
     this.maxHp = BOSS_CFG.maxHp;
     this.dir = DIR.DOWN;
     this.phase = 1;
+    this.speedMul = 1;   // 由難度設定
     this.slow = 0;
     this.shieldHp = 0;
     this.shieldTimer = 0;       // 下次上盾倒數（phase3）
@@ -39,7 +40,7 @@ class Boss extends Entity {
     if (this.phase === 2) s *= 1.35;
     if (this.phase === 3) s *= 1.7;
     if (this.slow > 0) s *= 0.55;
-    return s;
+    return s * this.speedMul;
   }
 
   update(dt, game) {

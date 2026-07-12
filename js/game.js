@@ -10,6 +10,7 @@ const TIPS = Object.freeze({
   sporeAlcohol: '部分芽孢對酒精耐受性較高',
   resistant: '抗藥性會使治療選擇受到限制',
   ppe: '適當使用個人防護裝備可降低暴露風險',
+  vaccine: '疫苗接種可降低重症感染風險',
 });
 
 class Game {
@@ -21,6 +22,9 @@ class Game {
     this.patientRect = { ...CONST.PATIENT_RECT };
     this.showHitboxes = false;
     this.timeGlobal = 0;
+    // 開始選單設定（跨重新開始保留）
+    this.menuDifficulty = 1;   // 0 簡單 / 1 普通 / 2 困難
+    this.menuEndless = false;  // 劇情五波 / 無盡模式
     this.reset();
     this.state = STATE.START;
   }
@@ -29,9 +33,16 @@ class Game {
 
   /* 完整重置一局：不殘留任何實體與計時器 */
   reset() {
+    // 套用選單設定
+    this.difficultyIndex = this.menuDifficulty;
+    this.diff = CONST.DIFFICULTY[this.difficultyIndex];
+    this.endless = this.menuEndless;
+
     this.map.reset();
     this.particles.reset();
     this.player = new Player();
+    this.player.invincibleMul = this.diff.invulnMul;
+    this.player.invincible = CONST.PLAYER.invincibleTime * this.diff.invulnMul;
     this.enemies = [];
     this.boss = null;
     this.projectiles = [];
@@ -39,23 +50,29 @@ class Game {
     this.items = [];
     this.floatTexts = [];
 
-    // ICU 隔離門與洗手台
+    // ICU 隔離門、洗手台、疫苗接種站
     const g = this.map.doorGap;
     this.isolationDoors = [{ x: g.x, y: g.y, w: g.w, h: g.h, hp: CONST.DOOR_HP, maxHp: CONST.DOOR_HP, closed: true, recloseCd: 0 }];
     this.washStations = [
       { x: 96 - 22, y: 300 - 22, w: 44, h: 44, cd: 0 },
       { x: 864 - 22, y: 300 - 22, w: 44, h: 44, cd: 0 },
     ];
+    this.vaccineStations = [
+      { x: 216 - 22, y: 528 - 22, w: 44, h: 44, cd: 0 },
+      { x: 744 - 22, y: 528 - 22, w: 44, h: 44, cd: 0 },
+    ];
 
     this.patientHp = CONST.PATIENT_HP;
     this.patientFlash = 0;
     this.patientAlarmCd = 0;
+    this.patientShield = 0;   // 疫苗防護剩餘秒數
 
     this.state = STATE.START;
     this.time = 0;
     this.score = 0;
 
     // 波次
+    this.currentWave = null;
     this.waveIndex = 0;
     this.spawnList = [];
     this.spawnWarns = [];
@@ -92,7 +109,8 @@ class Game {
 
   _enterWave(index) {
     this.waveIndex = index;
-    const wave = CONST.WAVES[index];
+    const wave = this.endless ? this._makeEndlessWave(index) : CONST.WAVES[index];
+    this.currentWave = wave;
     this.spawnList = wave.list.slice();
     this.spawnWarns = [];
     this.spawnTimer = 0.6;
@@ -108,6 +126,32 @@ class Game {
       this.transitionTimer = CONST.WAVE_TRANSITION_TIME;
       audioSys.waveStart();
     }
+  }
+
+  /* 無盡模式：依波數程序化生成組成，每五波一隻菌王 */
+  _makeEndlessWave(n) {
+    const boss = n > 0 && n % 5 === 4;
+    const pool = ['normal'];
+    if (n >= 1) pool.push('virus');
+    if (n >= 2) pool.push('spore');
+    if (n >= 3) pool.push('resistant');
+    const count = Math.min(6 + n * 2, 22);
+    const list = [];
+    for (let i = 0; i < count; i++) list.push(pool[(Math.random() * pool.length) | 0]);
+    return {
+      name: `無盡 第 ${n + 1} 波`, list,
+      maxAlive: Math.min(4 + (n / 2 | 0), 8),
+      interval: Math.max(2.4 - n * 0.08, 0.9),
+      contam: n >= 2, boss,
+    };
+  }
+
+  /* 依難度縮放敵人數值 */
+  _applyDiff(e) {
+    e.maxHp *= this.diff.enemyHp;
+    e.hp = e.maxHp;
+    e.speedMul = this.diff.enemySpeed;
+    return e;
   }
 
   allUnits() {
@@ -140,7 +184,10 @@ class Game {
 
     switch (this.state) {
       case STATE.START:
-        if (code === 'Enter' || code === 'Space') this.startGame();
+        if (code === 'ArrowLeft' || code === 'KeyA') { this.menuDifficulty = (this.menuDifficulty + 2) % 3; audioSys.toolSwitch(); }
+        else if (code === 'ArrowRight' || code === 'KeyD') { this.menuDifficulty = (this.menuDifficulty + 1) % 3; audioSys.toolSwitch(); }
+        else if (code === 'ArrowUp' || code === 'ArrowDown' || code === 'KeyW' || code === 'KeyS') { this.menuEndless = !this.menuEndless; audioSys.toolSwitch(); }
+        else if (code === 'Enter' || code === 'Space') this.startGame();
         break;
       case STATE.PLAYING:
       case STATE.WAVE_TRANSITION:
@@ -243,6 +290,7 @@ class Game {
     this._updateProjectiles(dt);
     this._updateContactDamage(dt, includePlayer);
     this._updateWashStations(dt);
+    this._updateVaccineStations(dt);
     this._updateDoors(dt);
     this._updateItems(dt);
     this._updateEffects(dt);
@@ -251,6 +299,7 @@ class Game {
     this._updateFloatTexts(dt);
     if (this.patientFlash > 0) this.patientFlash -= dt;
     if (this.patientAlarmCd > 0) this.patientAlarmCd -= dt;
+    if (this.patientShield > 0) this.patientShield -= dt;
     this._updateEndTimer(dt);
     this._checkWaveComplete();
 
@@ -260,13 +309,13 @@ class Game {
 
   /* ---------- 生成 ---------- */
   _updateSpawning(dt) {
-    const wave = CONST.WAVES[this.waveIndex];
+    const wave = this.currentWave;
     for (let i = this.spawnWarns.length - 1; i >= 0; i--) {
       const w = this.spawnWarns[i];
       w.timer -= dt;
       if (w.timer <= 0) {
         if (this._spawnAreaFree(w.x, w.y)) {
-          this.enemies.push(new Pathogen(w.type, w.x, w.y));
+          this.enemies.push(this._applyDiff(new Pathogen(w.type, w.x, w.y)));
           this.spawnWarns.splice(i, 1);
         } else w.timer = 0.35;
       }
@@ -303,12 +352,12 @@ class Game {
       const px = clamp(x + Math.cos(ang) * 80, 40, CONST.CANVAS_W - 40);
       const py = clamp(y + Math.sin(ang) * 80, 90, CONST.CANVAS_H - 120);
       const p = new Pathogen(type, px, py);
-      if (p.positionFree(px, py, this) && this._spawnAreaFree(px, py)) { this.enemies.push(p); return; }
+      if (p.positionFree(px, py, this) && this._spawnAreaFree(px, py)) { this.enemies.push(this._applyDiff(p)); return; }
     }
   }
 
   _spawnBoss() {
-    this.boss = new Boss(480, 120);
+    this.boss = this._applyDiff(new Boss(480, 120));
     this.bossSpawned = true;
     this.announce('超級抗藥菌王 登場！', 2.2);
   }
@@ -405,6 +454,8 @@ class Game {
 
   damagePatient(dmg, x, y) {
     if (this.patientHp <= 0) return;
+    dmg *= this.diff.patientDmg;
+    if (this.patientShield > 0) dmg *= CONST.PATIENT_SHIELD_MUL; // 疫苗防護減傷
     this.patientHp = Math.max(0, this.patientHp - dmg);
     this.patientFlash = 0.25;
     if (this.patientAlarmCd <= 0) {
@@ -434,6 +485,24 @@ class Game {
         audioSys.handWash();
         this.spawnFloatText(p.x, p.y - 26, '完成手部衛生', '#9bd8ff');
         this.triggerTip('wash');
+      }
+    }
+  }
+
+  _updateVaccineStations(dt) {
+    const p = this.player;
+    for (const v of this.vaccineStations) {
+      if (v.cd > 0) v.cd -= dt;
+      if (!p.alive || v.cd > 0) continue;
+      const near = aabbOverlap(p.rect.x - 8, p.rect.y - 8, p.rect.w + 16, p.rect.h + 16, v.x, v.y, v.w, v.h);
+      if (near) {
+        v.cd = CONST.VACCINE_CD;
+        this.patientShield = CONST.PATIENT_SHIELD_TIME;
+        this.score += 40;
+        this.particles.pickupSparkle(p.x, p.y, '#8ee08a');
+        audioSys.handWash();
+        this.spawnFloatText(this.patientCenter.x, this.patientRect.y - 28, '疫苗防護啟動', '#8ee08a');
+        this.triggerTip('vaccine');
       }
     }
   }
@@ -613,8 +682,14 @@ class Game {
     this.map.clearContamCircle(480, 360, 1200);
     for (const e of this.enemies) e.alive = false;
     this.spawnList = []; this.spawnWarns = [];
-    this.announce('院內感染控制成功', 2.5);
-    this._scheduleEnd(STATE.VICTORY, 1.6);
+    if (this.endless) {
+      this.patientHp = Math.min(CONST.PATIENT_HP, this.patientHp + CONST.PATIENT_WAVE_HEAL);
+      this.announce('菌王已清除，防疫任務繼續', 2.2);
+      this._enterWave(this.waveIndex + 1);
+    } else {
+      this.announce('院內感染控制成功', 2.5);
+      this._scheduleEnd(STATE.VICTORY, 1.6);
+    }
   }
 
   _scheduleEnd(target, delay) {
@@ -644,8 +719,8 @@ class Game {
     if (this.endTarget || this.patientHp <= 0) return;
     if (this.state !== STATE.PLAYING && this.state !== STATE.PLAYER_RESPAWNING) return;
     if (this.enemiesRemaining() > 0) return;
-    const wave = CONST.WAVES[this.waveIndex];
-    if (wave.boss) return; // Boss 波由 _bossDefeated 處理勝利
+    const wave = this.currentWave;
+    if (wave.boss) return; // Boss 波由 _bossDefeated 處理
 
     // 完成波次獎勵
     this.score += CONST.WAVE_BONUS;
@@ -655,7 +730,7 @@ class Game {
     this.patientHp = Math.min(CONST.PATIENT_HP, this.patientHp + CONST.PATIENT_WAVE_HEAL);
     this.spawnFloatText(this.patientCenter.x, this.patientRect.y - 40, bonusMsg, '#8ee0c0');
 
-    if (this.waveIndex >= CONST.WAVES.length - 1) this._scheduleEnd(STATE.VICTORY, 1.2);
+    if (!this.endless && this.waveIndex >= CONST.WAVES.length - 1) this._scheduleEnd(STATE.VICTORY, 1.2);
     else this._enterWave(this.waveIndex + 1);
   }
 
@@ -672,6 +747,7 @@ class Game {
 
     this.map.drawGround(ctx, this.time);
     this._drawWashStations(ctx);
+    this._drawVaccineStations(ctx);
     this._drawPatient(ctx);
     this._drawDoors(ctx);
     for (const it of this.items) it.draw(ctx, this.time);
@@ -696,6 +772,14 @@ class Game {
   _drawPatient(ctx) {
     const b = this.patientRect;
     const flash = this.patientFlash > 0 && Math.floor(this.time * 12) % 2 === 0;
+    // 疫苗防護光罩
+    if (this.patientShield > 0) {
+      ctx.strokeStyle = `rgba(120, 224, 160, ${0.4 + 0.25 * Math.sin(this.time * 6)})`;
+      ctx.lineWidth = 3;
+      ctx.strokeRect(b.x - 10, b.y - 10, b.w + 20, b.h + 20);
+      ctx.fillStyle = 'rgba(120, 224, 160, 0.08)';
+      ctx.fillRect(b.x - 10, b.y - 10, b.w + 20, b.h + 20);
+    }
     // 病床框
     ctx.fillStyle = '#f2f7fa';
     ctx.fillRect(b.x - 4, b.y - 4, b.w + 8, b.h + 8);
@@ -754,6 +838,30 @@ class Game {
       ctx.arc(w.x + w.w / 2, w.y + w.h - 8, 4, 0, Math.PI * 2); ctx.fill();
       ctx.strokeStyle = '#8aa6b8'; ctx.lineWidth = 1;
       ctx.strokeRect(w.x + 0.5, w.y + 0.5, w.w - 1, w.h - 1);
+    }
+  }
+
+  _drawVaccineStations(ctx) {
+    for (const v of this.vaccineStations) {
+      const ready = v.cd <= 0;
+      const cx = v.x + v.w / 2, cy = v.y + v.h / 2;
+      ctx.fillStyle = '#eef4f0';
+      ctx.fillRect(v.x, v.y, v.w, v.h);
+      ctx.strokeStyle = ready ? '#57e08a' : '#7d94a6'; ctx.lineWidth = 2;
+      ctx.strokeRect(v.x + 0.5, v.y + 0.5, v.w - 1, v.h - 1);
+      // 針筒圖示（斜放）
+      ctx.save();
+      ctx.translate(cx, cy); ctx.rotate(-Math.PI / 4);
+      ctx.fillStyle = ready ? '#57e08a' : '#93a6b2';
+      ctx.fillRect(-11, -4, 16, 8);       // 筒身
+      ctx.fillStyle = '#cfe6d8'; ctx.fillRect(-9, -3, 8, 6); // 藥液
+      ctx.fillStyle = ready ? '#3a8a5a' : '#6a7d88';
+      ctx.fillRect(5, -2.5, 4, 5);        // 推桿頭
+      ctx.fillRect(-15, -1.5, 4, 3);      // 針頭
+      ctx.restore();
+      // 十字標記
+      ctx.fillStyle = ready ? '#57e08a' : '#93a6b2';
+      ctx.fillRect(cx - 1, v.y + 3, 2, 6); ctx.fillRect(cx - 3, v.y + 5, 6, 2);
     }
   }
 
@@ -835,27 +943,27 @@ class Game {
 
     // 第一排
     const y1 = 18;
-    ctx.font = `bold 15px ${C}`;
+    ctx.font = `bold 17px ${C}`;
     ctx.fillStyle = '#7fe0d0';
     ctx.fillText('醫院防疫大作戰', 12, y1);
 
     const item = (x, y, label, value, color) => {
-      ctx.font = `10px ${M}`; ctx.fillStyle = '#7c93aa';
+      ctx.font = `11px ${M}`; ctx.fillStyle = '#7c93aa';
       ctx.fillText(label, x, y);
       const lw = ctx.measureText(label).width;
-      ctx.font = `bold 15px ${M}`; ctx.fillStyle = color;
+      ctx.font = `bold 17px ${M}`; ctx.fillStyle = color;
       ctx.fillText(value, x + lw + 7, y);
       return x + lw + 7 + ctx.measureText(value).width;
     };
-    item(150, y1, 'SCORE', `${this.score}`, '#ffe08a');
-    item(300, y1, 'LIVES', '♥'.repeat(Math.max(this.player.lives, 0)) || '—', '#ff8a8a');
-    item(420, y1, 'WAVE', `${this.waveIndex + 1}/${CONST.WAVES.length}`, '#8ab8ff');
-    item(520, y1, 'PATHOGENS', `${this.enemiesRemaining()}`, '#a4d67a');
+    item(156, y1, 'SCORE', `${this.score}`, '#ffe08a');
+    item(302, y1, 'LIVES', '♥'.repeat(Math.max(this.player.lives, 0)) || '—', '#ff8a8a');
+    item(424, y1, 'WAVE', this.endless ? `${this.waveIndex + 1}` : `${this.waveIndex + 1}/${CONST.WAVES.length}`, '#8ab8ff');
+    item(524, y1, 'PATHOGENS', `${this.enemiesRemaining()}`, '#a4d67a');
 
     // PATIENT 生命條
-    ctx.font = `10px ${M}`; ctx.fillStyle = '#7c93aa';
+    ctx.font = `11px ${M}`; ctx.fillStyle = '#7c93aa';
     ctx.fillText('PATIENT', 700, y1);
-    const pbx = 752, pbw = 150;
+    const pbx = 756, pbw = 146;
     const pf = clamp(this.patientHp / CONST.PATIENT_HP, 0, 1);
     ctx.fillStyle = 'rgba(255,255,255,0.15)';
     ctx.fillRect(pbx, y1 - 6, pbw, 12);
@@ -868,28 +976,29 @@ class Game {
     ctx.textAlign = 'left';
 
     // 第二排：工具 + 能量 + 增益 + 開關
-    const y2 = 44;
+    const y2 = 45;
     const tool = CONST.TOOLS[this.player.toolId];
-    ctx.font = `10px ${M}`; ctx.fillStyle = '#7c93aa'; ctx.fillText('TOOL', 12, y2);
-    ctx.font = `bold 13px ${C}`; ctx.fillStyle = tool.color; ctx.fillText(tool.name, 46, y2);
+    ctx.font = `11px ${M}`; ctx.fillStyle = '#7c93aa'; ctx.fillText('TOOL', 12, y2);
+    ctx.font = `bold 15px ${C}`; ctx.fillStyle = tool.color; ctx.fillText(tool.name, 48, y2);
     // 能量條
-    const ebx = 150, ebw = 120, e = this.player.energy[this.player.toolId], ef = e / tool.energyMax;
-    ctx.fillStyle = 'rgba(255,255,255,0.15)'; ctx.fillRect(ebx, y2 - 6, ebw, 12);
+    const ebx = 158, ebw = 120, e = this.player.energy[this.player.toolId], ef = e / tool.energyMax;
+    ctx.fillStyle = 'rgba(255,255,255,0.15)'; ctx.fillRect(ebx, y2 - 7, ebw, 13);
     ctx.fillStyle = this.player.canUseTool(this.player.toolId) ? tool.color : '#66788c';
-    ctx.fillRect(ebx, y2 - 6, ebw * ef, 12);
-    ctx.strokeStyle = 'rgba(255,255,255,0.3)'; ctx.strokeRect(ebx, y2 - 6, ebw, 12);
-    ctx.fillStyle = '#cfe0ee'; ctx.font = `9px ${M}`; ctx.fillText('ENERGY', ebx, y2 - 12);
+    ctx.fillRect(ebx, y2 - 7, ebw * ef, 13);
+    ctx.strokeStyle = 'rgba(255,255,255,0.3)'; ctx.strokeRect(ebx, y2 - 7, ebw, 13);
+    ctx.fillStyle = '#cfe0ee'; ctx.font = `10px ${M}`; ctx.fillText('ENERGY', ebx, y2 - 13);
     // 工具快捷
-    ctx.font = `10px ${M}`; ctx.fillStyle = '#7c93aa';
-    ctx.fillText('[1]酒精 [2]抗生素 [3]紫外線 [Q/E]切換', 290, y2);
+    ctx.font = `12px ${M}`; ctx.fillStyle = '#7c93aa';
+    ctx.fillText('[1]酒精 [2]抗生素 [3]紫外線 [Q/E]切換', 300, y2);
 
     // 增益指示
-    let gx = 600;
-    if (this.player.ppe > 0) { ctx.fillStyle = '#5ac6e0'; ctx.font = `bold 11px ${C}`; ctx.fillText(`PPE×${this.player.ppe}`, gx, y2); gx += 58; }
-    if (this.player.handHygiene > 0) { ctx.fillStyle = '#9bd8ff'; ctx.font = `bold 11px ${C}`; ctx.fillText(`洗手 ${this.player.handHygiene.toFixed(0)}s`, gx, y2); gx += 74; }
+    let gx = 618;
+    if (this.player.ppe > 0) { ctx.fillStyle = '#5ac6e0'; ctx.font = `bold 13px ${C}`; ctx.fillText(`PPE×${this.player.ppe}`, gx, y2); gx += 64; }
+    if (this.player.handHygiene > 0) { ctx.fillStyle = '#9bd8ff'; ctx.font = `bold 13px ${C}`; ctx.fillText(`洗手 ${this.player.handHygiene.toFixed(0)}s`, gx, y2); gx += 78; }
+    if (this.patientShield > 0) { ctx.fillStyle = '#8ee08a'; ctx.font = `bold 13px ${C}`; ctx.fillText(`疫苗 ${this.patientShield.toFixed(0)}s`, gx, y2); gx += 78; }
 
     // 音效開關
-    ctx.font = `bold 11px ${M}`;
+    ctx.font = `bold 12px ${M}`;
     ctx.fillStyle = audioSys.enabled ? '#9fb0c6' : '#525b6c';
     ctx.fillText(`[M]音效 ${audioSys.enabled ? 'ON' : 'OFF'}`, 800, y2);
     ctx.fillStyle = (audioSys.musicEnabled) ? '#9fb0c6' : '#525b6c';
@@ -939,22 +1048,22 @@ class Game {
     if (!this.tip) return;
     const C = CONST.FONTS.CJK;
     const W = CONST.CANVAS_W;
-    ctx.font = `bold 16px ${C}`;
+    ctx.font = `bold 19px ${C}`;
     const tw = ctx.measureText(this.tip.text).width;
-    const boxW = tw + 80, boxH = 52, x = (W - boxW) / 2, y = CONST.CANVAS_H - 120;
-    ctx.fillStyle = 'rgba(16, 40, 56, 0.94)';
-    this._roundRect(ctx, x, y, boxW, boxH, 10); ctx.fill();
-    ctx.strokeStyle = '#7fe0d0'; ctx.lineWidth = 2;
-    this._roundRect(ctx, x, y, boxW, boxH, 10); ctx.stroke();
+    const boxW = tw + 96, boxH = 62, x = (W - boxW) / 2, y = CONST.CANVAS_H - 132;
+    ctx.fillStyle = 'rgba(16, 40, 56, 0.95)';
+    this._roundRect(ctx, x, y, boxW, boxH, 12); ctx.fill();
+    ctx.strokeStyle = '#7fe0d0'; ctx.lineWidth = 2.5;
+    this._roundRect(ctx, x, y, boxW, boxH, 12); ctx.stroke();
     // 圖示
     ctx.fillStyle = '#7fe0d0';
-    ctx.beginPath(); ctx.arc(x + 26, y + boxH / 2, 12, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#0e2430'; ctx.font = `bold 16px ${CONST.FONTS.MONO}`; ctx.textAlign = 'center';
-    ctx.fillText('i', x + 26, y + boxH / 2 + 6);
-    ctx.fillStyle = '#eaf7f4'; ctx.font = `bold 16px ${C}`; ctx.textAlign = 'left';
-    ctx.fillText(this.tip.text, x + 48, y + 24);
-    ctx.fillStyle = '#7c93aa'; ctx.font = `11px ${C}`;
-    ctx.fillText('衛教提示 ・ 按 Enter 關閉', x + 48, y + 42);
+    ctx.beginPath(); ctx.arc(x + 30, y + boxH / 2, 14, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#0e2430'; ctx.font = `bold 19px ${CONST.FONTS.MONO}`; ctx.textAlign = 'center';
+    ctx.fillText('i', x + 30, y + boxH / 2 + 7);
+    ctx.fillStyle = '#eaf7f4'; ctx.font = `bold 19px ${C}`; ctx.textAlign = 'left';
+    ctx.fillText(this.tip.text, x + 54, y + 28);
+    ctx.fillStyle = '#7c93aa'; ctx.font = `13px ${C}`;
+    ctx.fillText('衛教提示 ・ 按 Enter 關閉', x + 54, y + 48);
   }
 
   _roundRect(ctx, x, y, w, h, r) {
@@ -983,45 +1092,62 @@ class Game {
 
     switch (this.state) {
       case STATE.START: {
-        dim(0.82);
-        this._title(ctx, '醫院防疫大作戰', W / 2, 130, 46, '#7fe0d0');
-        ctx.fillStyle = '#9fc6d0'; ctx.font = `15px ${C}`;
-        ctx.fillText('Hospital Infection Defense', W / 2, 158);
+        dim(0.84);
+        this._title(ctx, '醫院防疫大作戰', W / 2, 128, 54, '#7fe0d0');
+        ctx.fillStyle = '#9fc6d0'; ctx.font = `18px ${C}`;
+        ctx.fillText('Hospital Infection Defense', W / 2, 160);
         // 故事
-        ctx.fillStyle = '#c8d6e2'; ctx.font = `14px ${C}`;
-        ctx.fillText('你是一名感染管制醫師，病原體正湧入醫院。', W / 2, 200);
-        ctx.fillText('善用感染控制工具，守護底部 ICU 的重症病人，擊退五波進攻與最終 Boss。', W / 2, 224);
+        ctx.fillStyle = '#d3e0ea'; ctx.font = `17px ${C}`;
+        ctx.fillText('你是一名感染管制醫師，病原體正湧入醫院。', W / 2, 208);
+        ctx.fillText('善用感染控制工具，守護底部 ICU 的重症病人，擊退五波進攻與最終 Boss。', W / 2, 236);
         // 工具
         ctx.textAlign = 'left';
-        const lx = W / 2 - 250;
-        ctx.font = `bold 14px ${C}`;
-        ctx.fillStyle = '#7fd8e8'; ctx.fillText('① 酒精噴霧', lx, 272);
-        ctx.fillStyle = '#c8d6e2'; ctx.font = `13px ${C}`; ctx.fillText('近距離扇形，清一般細菌與污染，對病毒普通、芽孢極差', lx + 110, 272);
-        ctx.fillStyle = '#f2c14e'; ctx.font = `bold 14px ${C}`; ctx.fillText('② 抗生素', lx, 300);
-        ctx.fillStyle = '#c8d6e2'; ctx.font = `13px ${C}`; ctx.fillText('直線膠囊，遠射一般細菌；對病毒無效', lx + 110, 300);
-        ctx.fillStyle = '#b98cf0'; ctx.font = `bold 14px ${C}`; ctx.fillText('③ 紫外線', lx, 328);
-        ctx.fillStyle = '#c8d6e2'; ctx.font = `13px ${C}`; ctx.fillText('慢速光束穿透多敵，剋病毒、芽孢與污染，破 Boss 護盾', lx + 110, 328);
+        const lx = W / 2 - 268;
+        ctx.font = `bold 17px ${C}`;
+        ctx.fillStyle = '#7fd8e8'; ctx.fillText('① 酒精噴霧', lx, 288);
+        ctx.fillStyle = '#c8d6e2'; ctx.font = `15px ${C}`; ctx.fillText('近距離扇形，清一般細菌與污染，對病毒普通、芽孢極差', lx + 128, 288);
+        ctx.fillStyle = '#f2c14e'; ctx.font = `bold 17px ${C}`; ctx.fillText('② 抗生素', lx, 320);
+        ctx.fillStyle = '#c8d6e2'; ctx.font = `15px ${C}`; ctx.fillText('直線膠囊，遠射一般細菌；對病毒無效', lx + 128, 320);
+        ctx.fillStyle = '#b98cf0'; ctx.font = `bold 17px ${C}`; ctx.fillText('③ 紫外線', lx, 352);
+        ctx.fillStyle = '#c8d6e2'; ctx.font = `15px ${C}`; ctx.fillText('慢速光束穿透多敵，剋病毒、芽孢與污染，破 Boss 護盾', lx + 128, 352);
         ctx.textAlign = 'center';
+        // 難度 / 模式選擇
+        const diffs = CONST.DIFFICULTY;
+        ctx.font = `bold 15px ${C}`; ctx.fillStyle = '#8fa8ba';
+        ctx.fillText('難度（← →）', W / 2 - 200, 396);
+        for (let i = 0; i < diffs.length; i++) {
+          const sel = i === this.menuDifficulty;
+          ctx.fillStyle = sel ? '#ffe08a' : '#5f7688';
+          ctx.font = `bold ${sel ? 18 : 15}px ${C}`;
+          ctx.fillText(diffs[i].name, W / 2 - 80 + i * 70, 396);
+        }
+        ctx.font = `bold 15px ${C}`; ctx.fillStyle = '#8fa8ba';
+        ctx.fillText('模式（↑ ↓）', W / 2 - 200, 424);
+        ctx.font = `bold 16px ${C}`;
+        ctx.fillStyle = !this.menuEndless ? '#7fe0d0' : '#5f7688';
+        ctx.fillText('劇情五波', W / 2 - 80, 424);
+        ctx.fillStyle = this.menuEndless ? '#7fe0d0' : '#5f7688';
+        ctx.fillText('無盡模式', W / 2 + 10, 424);
         // 操作
-        ctx.fillStyle = '#8fa8ba'; ctx.font = `13px ${C}`;
-        ctx.fillText('WASD/方向鍵 移動 ・ Space 使用工具 ・ 1/2/3 或 Q/E 切換 ・ C 關隔離門 ・ P 暫停 ・ M 音效', W / 2, 380);
+        ctx.fillStyle = '#9db6c8'; ctx.font = `14px ${C}`;
+        ctx.fillText('WASD/方向鍵 移動 ・ Space 使用工具 ・ 1/2/3 或 Q/E 切換 ・ C 關隔離門 ・ P 暫停 ・ M 音效', W / 2, 454);
         // 聲明
-        ctx.fillStyle = '#6b8394'; ctx.font = `12px ${C}`;
-        ctx.fillText('本遊戲為教育與娛樂用途，不取代正式醫療建議或感染管制指引。', W / 2, 420);
+        ctx.fillStyle = '#7a93a4'; ctx.font = `13px ${C}`;
+        ctx.fillText('本遊戲為教育與娛樂用途，不取代正式醫療建議或感染管制指引。', W / 2, 480);
         // 開始
         if (Math.floor(this.timeGlobal * 2) % 2 === 0) {
-          ctx.fillStyle = '#ffe08a'; ctx.font = `bold 22px ${M}`;
-          ctx.fillText('PRESS ENTER TO START', W / 2, 480);
+          ctx.fillStyle = '#ffe08a'; ctx.font = `bold 26px ${M}`;
+          ctx.fillText('PRESS ENTER TO START', W / 2, 520);
         }
         break;
       }
       case STATE.WAVE_TRANSITION: {
-        const wave = CONST.WAVES[this.waveIndex];
+        const wave = this.currentWave || CONST.WAVES[this.waveIndex];
         ctx.fillStyle = 'rgba(6, 14, 24, 0.5)';
         ctx.fillRect(0, H / 2 - 70, W, 132);
-        this._title(ctx, `第 ${this.waveIndex + 1} 波`, W / 2, H / 2 - 10, 42, '#8ab8ff');
-        ctx.fillStyle = '#c8d6e2'; ctx.font = `bold 20px ${C}`;
-        ctx.fillText(wave.name, W / 2, H / 2 + 30);
+        this._title(ctx, `第 ${this.waveIndex + 1} 波`, W / 2, H / 2 - 10, 46, '#8ab8ff');
+        ctx.fillStyle = '#c8d6e2'; ctx.font = `bold 24px ${C}`;
+        ctx.fillText(wave ? wave.name : '', W / 2, H / 2 + 32);
         break;
       }
       case STATE.BOSS_INTRO: {
@@ -1039,26 +1165,26 @@ class Game {
         break;
       }
       case STATE.GAME_OVER: {
-        dim(0.78);
-        this._title(ctx, '院內感染失控', W / 2, H / 2 - 70, 48, '#ff5d5d');
-        ctx.fillStyle = '#ffe08a'; ctx.font = `bold 22px ${M}`;
+        dim(0.8);
+        this._title(ctx, '院內感染失控', W / 2, H / 2 - 74, 52, '#ff5d5d');
+        ctx.fillStyle = '#ffe08a'; ctx.font = `bold 25px ${M}`;
         ctx.fillText(`最終分數 ${this.score}`, W / 2, H / 2 - 20);
-        ctx.fillStyle = '#c8d6e2'; ctx.font = `16px ${C}`;
-        ctx.fillText(`到達波次：第 ${this.waveIndex + 1} 波 ・ 病人剩餘生命：${Math.max(0, Math.ceil(this.patientHp))}%`, W / 2, H / 2 + 16);
-        ctx.fillStyle = '#9fb0c6'; ctx.font = `bold 17px ${M}`;
-        ctx.fillText('PRESS R TO RESTART', W / 2, H / 2 + 60);
+        ctx.fillStyle = '#c8d6e2'; ctx.font = `18px ${C}`;
+        ctx.fillText(`到達波次：第 ${this.waveIndex + 1} 波 ・ 病人剩餘生命：${Math.max(0, Math.ceil(this.patientHp))}%`, W / 2, H / 2 + 18);
+        ctx.fillStyle = '#9fb0c6'; ctx.font = `bold 19px ${M}`;
+        ctx.fillText('PRESS R TO RESTART', W / 2, H / 2 + 62);
         break;
       }
       case STATE.VICTORY: {
-        dim(0.78);
-        this._title(ctx, '院內感染控制成功', W / 2, H / 2 - 84, 44, '#57e08a');
-        ctx.fillStyle = '#ffe08a'; ctx.font = `bold 22px ${M}`;
+        dim(0.8);
+        this._title(ctx, this.endless ? '防疫任務結束' : '院內感染控制成功', W / 2, H / 2 - 90, 48, '#57e08a');
+        ctx.fillStyle = '#ffe08a'; ctx.font = `bold 25px ${M}`;
         ctx.fillText(`最終分數 ${this.score}`, W / 2, H / 2 - 36);
-        ctx.fillStyle = '#c8d6e2'; ctx.font = `15px ${C}`;
-        ctx.fillText(`病人存活率：${Math.max(0, Math.ceil(this.patientHp))}%`, W / 2, H / 2 - 4);
-        ctx.fillText(`正確工具使用：${this.correctToolUses} 次 ・ 清除污染：${this.contamClearedTotal} 格`, W / 2, H / 2 + 24);
-        ctx.fillStyle = '#9fb0c6'; ctx.font = `16px ${C}`;
-        ctx.fillText('按 R 再玩一次', W / 2, H / 2 + 64);
+        ctx.fillStyle = '#c8d6e2'; ctx.font = `17px ${C}`;
+        ctx.fillText(`病人存活率：${Math.max(0, Math.ceil(this.patientHp))}%`, W / 2, H / 2);
+        ctx.fillText(`正確工具使用：${this.correctToolUses} 次 ・ 清除污染：${this.contamClearedTotal} 格`, W / 2, H / 2 + 28);
+        ctx.fillStyle = '#9fb0c6'; ctx.font = `18px ${C}`;
+        ctx.fillText('按 R 再玩一次', W / 2, H / 2 + 68);
         break;
       }
     }

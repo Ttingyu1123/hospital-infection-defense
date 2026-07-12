@@ -12,6 +12,7 @@ class Pathogen extends Entity {
     this.hp = cfg.hp;
     this.maxHp = cfg.hp;
     this.dir = DIR.DOWN;
+    this.speedMul = 1;         // 由難度設定
     this.slow = 0;              // 隔離警示減速剩餘秒數
     this.decisionTimer = 0.3 + Math.random() * 0.5;
     this.wobble = Math.random() * Math.PI * 2;
@@ -33,7 +34,7 @@ class Pathogen extends Entity {
     return false;
   }
 
-  get speedNow() { return this.slow > 0 ? this.cfg.speed * 0.5 : this.cfg.speed; }
+  get speedNow() { return (this.slow > 0 ? this.cfg.speed * 0.5 : this.cfg.speed) * this.speedMul; }
 
   update(dt, game) {
     this.updateTimers(dt);
